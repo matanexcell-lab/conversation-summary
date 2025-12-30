@@ -12,7 +12,7 @@
     }
     .box {
       background: white;
-      max-width: 600px;
+      max-width: 650px;
       margin: auto;
       padding: 20px;
       border-radius: 8px;
@@ -44,7 +44,7 @@
 <body>
 
 <div class="box">
-  <h2>מערכת סיכום שיחה</h2>
+  <h2 id="title">מערכת סיכום שיחה</h2>
 
   <div id="step"></div>
 
@@ -64,25 +64,32 @@ const fundTypes = [
   "פוליסת חיסכון"
 ];
 
+let totalFunds = 0;
+let currentFund = 1;
+let results = [];
 let data = {};
 let stepIndex = 0;
 
 const steps = [
-  () => askInput("כמה קופות צריך לרשום?", "count"),
+  () => askInput("כמה קופות צריך לרשום?", "count", true),
+
   () => askSelect("מה שם החברה?", "company", companies),
   () => askSelect("מה סוג הקופה?", "fundType", fundTypes),
   () => askInput("מה מספר הקופה?", "fundNumber"),
   () => askSelect("לנייד או להשאיר?", "action", ["לנייד", "להשאיר"]),
   () => {
-    if (data.action === "להשאיר") return finish();
-    return askSelect("לאיזו חברה לנייד?", "targetCompany", companies);
+    if (data.action === "להשאיר") {
+      saveFund();
+      return;
+    }
+    askSelect("לאיזו חברה לנייד?", "targetCompany", companies);
   },
   () => askInput("מה מסלול ההשקעה?", "investment"),
   () => askInput("מה דמי הניהול?", "fees"),
-  () => finish()
+  () => saveFund()
 ];
 
-function askInput(labelText, key) {
+function askInput(labelText, key, isFirst = false) {
   document.getElementById("step").innerHTML = `
     <label>${labelText}</label>
     <input id="value">
@@ -90,6 +97,16 @@ function askInput(labelText, key) {
   document.getElementById("nextBtn").onclick = () => {
     const val = document.getElementById("value").value.trim();
     if (!val) return alert("יש למלא ערך");
+
+    if (isFirst) {
+      totalFunds = parseInt(val, 10);
+      if (isNaN(totalFunds) || totalFunds < 1) {
+        return alert("יש להזין מספר קופות תקין");
+      }
+      next();
+      return;
+    }
+
     data[key] = val;
     next();
   };
@@ -105,6 +122,7 @@ function askSelect(labelText, key, options) {
     </select>
     <input id="other" placeholder="מלל חופשי" style="display:none;">
   `;
+
   const select = document.getElementById("value");
   const other = document.getElementById("other");
 
@@ -125,18 +143,36 @@ function askSelect(labelText, key, options) {
 
 function next() {
   stepIndex++;
-  if (stepIndex < steps.length) steps[stepIndex]();
+  if (stepIndex < steps.length) {
+    document.getElementById("title").textContent =
+      `מערכת סיכום שיחה – קופה ${currentFund} מתוך ${totalFunds}`;
+    steps[stepIndex]();
+  }
+}
+
+function saveFund() {
+  let line = `${currentFund}. ${data.company} ${data.fundType} מספר קופה ${data.fundNumber} - `;
+
+  if (data.action === "להשאיר") {
+    line += "תישאר";
+  } else {
+    line += `תנוייד לחברה ${data.targetCompany} כאשר הכסף יושקע ב${data.investment} בדמי ניהול ${data.fees}`;
+  }
+
+  results.push(line);
+
+  if (currentFund < totalFunds) {
+    currentFund++;
+    data = {};
+    stepIndex = 1;
+    steps[stepIndex]();
+  } else {
+    finish();
+  }
 }
 
 function finish() {
-  let text = "סיכום שיחה:\n\n";
-  text += `1. ${data.company} ${data.fundType} מספר קופה ${data.fundNumber} - `;
-
-  if (data.action === "להשאיר") {
-    text += "תישאר";
-  } else {
-    text += `תנוייד לחברה ${data.targetCompany} כאשר הכסף יושקע ב${data.investment} בדמי ניהול ${data.fees}`;
-  }
+  let text = "סיכום שיחה:\n\n" + results.join("\n");
 
   document.getElementById("step").style.display = "none";
   document.getElementById("nextBtn").style.display = "none";
