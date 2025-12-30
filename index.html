@@ -34,6 +34,9 @@
     button {
       cursor: pointer;
     }
+    .secondary {
+      background: #eee;
+    }
     pre {
       background: #eee;
       padding: 10px;
@@ -52,16 +55,39 @@
 
   <pre id="output" style="display:none;"></pre>
   <button id="copyBtn" style="display:none;">📋 העתק סיכום שיחה</button>
+  <button id="resetBtn" class="secondary" style="display:none;">🔁 סיום</button>
 </div>
 
 <script>
-const companies = ["הראל", "מגדל", "הפניקס", "כלל", "אלטשולר", "מיטב"];
+const companies = [
+  "הראל",
+  "מגדל",
+  "הפניקס",
+  "כלל",
+  "אלטשולר",
+  "מיטב",
+  "אנליסט",
+  "אינפיניטי",
+  "ילין לפידות",
+  "מור",
+  "קרן השתלמות לעובדי המדינה"
+];
+
 const fundTypes = [
   "קופת גמל",
   "קרן השתלמות",
   "פנסיה",
   "קופת גמל להשקעה",
   "פוליסת חיסכון"
+];
+
+const investmentTracks = [
+  "מניות",
+  "Snp500",
+  "משולב סחיר",
+  "עוקב מדדים גמיש",
+  "מניות סחיר",
+  "עוקב מדדי מניות"
 ];
 
 let totalFunds = 0;
@@ -84,7 +110,7 @@ const steps = [
     }
     askSelect("לאיזו חברה לנייד?", "targetCompany", companies);
   },
-  () => askInput("מה מסלול ההשקעה?", "investment"),
+  () => askSelect("מסלול השקעה – כאשר הכסף יושקע ב:", "investment", investmentTracks),
   () => askInput("מה דמי הניהול?", "fees"),
   () => saveFund()
 ];
@@ -178,11 +204,16 @@ function finish() {
   document.getElementById("nextBtn").style.display = "none";
   document.getElementById("output").style.display = "block";
   document.getElementById("copyBtn").style.display = "block";
+  document.getElementById("resetBtn").style.display = "block";
   document.getElementById("output").textContent = text;
 
   document.getElementById("copyBtn").onclick = () => {
     navigator.clipboard.writeText(text);
     alert("הועתק!");
+  };
+
+  document.getElementById("resetBtn").onclick = () => {
+    location.reload();
   };
 }
 
