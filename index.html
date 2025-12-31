@@ -58,7 +58,6 @@ const fundTypes = [
   "קופת גמל","קרן השתלמות","פנסיה","קופת גמל להשקעה","פוליסת חיסכון"
 ];
 
-// value = מה שנכנס לפלט | label = מה שמוצג בסרגל
 const investmentTracks = [
   { label: "מניות", value: "מניות" },
   { label: "Snp500", value: "Snp500" },
@@ -66,7 +65,6 @@ const investmentTracks = [
   { label: "עוקב מדדים גמיש", value: "עוקב מדדים גמיש" },
   { label: "מניות סחיר", value: "מניות סחיר" },
   { label: "עוקב מדדי מניות", value: "עוקב מדדי מניות" },
-
   { label: "50% מניות 50% snp500", value: "50% מניות 50% snp500" },
   { label: "השילוש הקדוש", value: "33% משולב סחיר 33% מדדי מניות 34% snp500" },
   { label: "חצי חצי אנליסט", value: "50% עוקב מדדים גמיש 50% snp500" }
@@ -87,11 +85,26 @@ const steps = [
   () => askInput("מה מספר הקופה?", "fundNumber"),
   () => askSelect("לנייד או להשאיר?", "action", ["לנייד","להשאיר"]),
   () => {
-    if (data.action === "להשאיר") { saveFund(); return; }
+    if (data.action === "להשאיר") {
+      askSelectAdvanced("מה מסלול ההשקעה עכשיו?", "currentInvestment", investmentTracks);
+      return;
+    }
     askSelect("לאיזו חברה לנייד?", "targetCompany", companies);
   },
-  () => askSelectAdvanced("מסלול השקעה – כאשר הכסף יושקע ב:", "investment", investmentTracks),
-  () => askSelect("מה דמי הניהול?", "fees", feeOptions),
+  () => {
+    if (data.action === "להשאיר") {
+      askSelectAdvanced("לאיזה מסלול יישאר?", "futureInvestment", investmentTracks);
+      return;
+    }
+    askSelectAdvanced("מסלול השקעה – כאשר הכסף יושקע ב:", "investment", investmentTracks);
+  },
+  () => {
+    if (data.action === "להשאיר") {
+      saveFund();
+      return;
+    }
+    askSelect("מה דמי הניהול?", "fees", feeOptions);
+  },
   () => saveFund()
 ];
 
@@ -150,9 +163,14 @@ function next(){
 }
 
 function saveFund(){
-  let line=`${currentFund}. ${data.company} ${data.fundType} מספר קופה ${data.fundNumber} - `;
-  if(data.action==="להשאיר") line+="תישאר";
-  else line+=`תנוייד לחברה ${data.targetCompany} כאשר הכסף יושקע ב${data.investment} בדמי ניהול ${data.fees}`;
+  let line = `${currentFund}. ${data.company} ${data.fundType} מספר קופה ${data.fundNumber}- `;
+
+  if(data.action==="להשאיר"){
+    line += `תישאר באותה חברה כאשר יתבצע שינוי מסלול מ${data.currentInvestment} ל${data.futureInvestment}`;
+  } else {
+    line += `תנוייד לחברה ${data.targetCompany} כאשר הכסף יושקע ב${data.investment} בדמי ניהול ${data.fees}`;
+  }
+
   results.push(line);
 
   if(currentFund<totalFunds){
