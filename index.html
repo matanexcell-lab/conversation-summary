@@ -17,26 +17,16 @@
       padding: 20px;
       border-radius: 8px;
     }
-    h2 {
-      margin-top: 0;
-    }
-    label {
-      display: block;
-      margin-bottom: 6px;
-      font-weight: bold;
-    }
+    h2 { margin-top: 0; }
+    label { display: block; margin-bottom: 6px; font-weight: bold; }
     input, select, button {
       width: 100%;
       padding: 8px;
       font-size: 16px;
       margin-bottom: 12px;
     }
-    button {
-      cursor: pointer;
-    }
-    .secondary {
-      background: #eee;
-    }
+    button { cursor: pointer; }
+    .secondary { background: #eee; }
     pre {
       background: #eee;
       padding: 10px;
@@ -60,35 +50,29 @@
 
 <script>
 const companies = [
-  "הראל",
-  "מגדל",
-  "הפניקס",
-  "כלל",
-  "אלטשולר",
-  "מיטב",
-  "אנליסט",
-  "אינפיניטי",
-  "ילין לפידות",
-  "מור",
-  "קרן השתלמות לעובדי המדינה"
+  "הראל","מגדל","הפניקס","כלל","אלטשולר","מיטב",
+  "אנליסט","אינפיניטי","ילין לפידות","מור","קרן השתלמות לעובדי המדינה"
 ];
 
 const fundTypes = [
-  "קופת גמל",
-  "קרן השתלמות",
-  "פנסיה",
-  "קופת גמל להשקעה",
-  "פוליסת חיסכון"
+  "קופת גמל","קרן השתלמות","פנסיה","קופת גמל להשקעה","פוליסת חיסכון"
 ];
 
+// value = מה שנכנס לפלט | label = מה שמוצג בסרגל
 const investmentTracks = [
-  "מניות",
-  "Snp500",
-  "משולב סחיר",
-  "עוקב מדדים גמיש",
-  "מניות סחיר",
-  "עוקב מדדי מניות"
+  { label: "מניות", value: "מניות" },
+  { label: "Snp500", value: "Snp500" },
+  { label: "משולב סחיר", value: "משולב סחיר" },
+  { label: "עוקב מדדים גמיש", value: "עוקב מדדים גמיש" },
+  { label: "מניות סחיר", value: "מניות סחיר" },
+  { label: "עוקב מדדי מניות", value: "עוקב מדדי מניות" },
+
+  { label: "50% מניות 50% snp500", value: "50% מניות 50% snp500" },
+  { label: "השילוש הקדוש", value: "33% משולב סחיר 33% מדדי מניות 34% snp500" },
+  { label: "חצי חצי אנליסט", value: "50% עוקב מדדים גמיש 50% snp500" }
 ];
+
+const feeOptions = ["0.6%","0.7%","0.8%"];
 
 let totalFunds = 0;
 let currentFund = 1;
@@ -98,123 +82,91 @@ let stepIndex = 0;
 
 const steps = [
   () => askInput("כמה קופות צריך לרשום?", "count", true),
-
   () => askSelect("מה שם החברה?", "company", companies),
   () => askSelect("מה סוג הקופה?", "fundType", fundTypes),
   () => askInput("מה מספר הקופה?", "fundNumber"),
-  () => askSelect("לנייד או להשאיר?", "action", ["לנייד", "להשאיר"]),
+  () => askSelect("לנייד או להשאיר?", "action", ["לנייד","להשאיר"]),
   () => {
-    if (data.action === "להשאיר") {
-      saveFund();
-      return;
-    }
+    if (data.action === "להשאיר") { saveFund(); return; }
     askSelect("לאיזו חברה לנייד?", "targetCompany", companies);
   },
-  () => askSelect("מסלול השקעה – כאשר הכסף יושקע ב:", "investment", investmentTracks),
-  () => askInput("מה דמי הניהול?", "fees"),
+  () => askSelectAdvanced("מסלול השקעה – כאשר הכסף יושקע ב:", "investment", investmentTracks),
+  () => askSelect("מה דמי הניהול?", "fees", feeOptions),
   () => saveFund()
 ];
 
-function askInput(labelText, key, isFirst = false) {
-  document.getElementById("step").innerHTML = `
-    <label>${labelText}</label>
-    <input id="value">
-  `;
-  document.getElementById("nextBtn").onclick = () => {
-    const val = document.getElementById("value").value.trim();
-    if (!val) return alert("יש למלא ערך");
-
+function askInput(labelText, key, isFirst=false) {
+  step.innerHTML = `<label>${labelText}</label><input id="value">`;
+  nextBtn.onclick = () => {
+    const v = value.value.trim();
+    if (!v) return alert("יש למלא ערך");
     if (isFirst) {
-      totalFunds = parseInt(val, 10);
-      if (isNaN(totalFunds) || totalFunds < 1) {
-        return alert("יש להזין מספר קופות תקין");
-      }
-      next();
-      return;
+      totalFunds = parseInt(v,10);
+      if (isNaN(totalFunds)||totalFunds<1) return alert("מספר לא תקין");
+      next(); return;
     }
-
-    data[key] = val;
-    next();
+    data[key]=v; next();
   };
 }
 
 function askSelect(labelText, key, options) {
-  let opts = options.map(o => `<option value="${o}">${o}</option>`).join("");
-  document.getElementById("step").innerHTML = `
+  step.innerHTML = `
     <label>${labelText}</label>
     <select id="value">
-      ${opts}
+      ${options.map(o=>`<option>${o}</option>`).join("")}
       <option value="אחר">אחר</option>
     </select>
     <input id="other" placeholder="מלל חופשי" style="display:none;">
   `;
-
-  const select = document.getElementById("value");
-  const other = document.getElementById("other");
-
-  select.onchange = () => {
-    other.style.display = select.value === "אחר" ? "block" : "none";
-  };
-
-  document.getElementById("nextBtn").onclick = () => {
-    let val = select.value;
-    if (val === "אחר") {
-      if (!other.value.trim()) return alert("יש למלא מלל חופשי");
-      val = other.value.trim();
-    }
-    data[key] = val;
-    next();
+  value.onchange = ()=> other.style.display = value.value==="אחר"?"block":"none";
+  nextBtn.onclick = ()=>{
+    let v=value.value;
+    if(v==="אחר"){ if(!other.value.trim())return alert("יש למלא"); v=other.value.trim(); }
+    data[key]=v; next();
   };
 }
 
-function next() {
+function askSelectAdvanced(labelText,key,options){
+  step.innerHTML = `
+    <label>${labelText}</label>
+    <select id="value">
+      ${options.map(o=>`<option value="${o.value}">${o.label}</option>`).join("")}
+      <option value="אחר">אחר</option>
+    </select>
+    <input id="other" placeholder="מלל חופשי" style="display:none;">
+  `;
+  value.onchange=()=>other.style.display=value.value==="אחר"?"block":"none";
+  nextBtn.onclick=()=>{
+    let v=value.value;
+    if(v==="אחר"){ if(!other.value.trim())return alert("יש למלא"); v=other.value.trim(); }
+    data[key]=v; next();
+  };
+}
+
+function next(){
   stepIndex++;
-  if (stepIndex < steps.length) {
-    document.getElementById("title").textContent =
-      `מערכת סיכום שיחה – קופה ${currentFund} מתוך ${totalFunds}`;
-    steps[stepIndex]();
-  }
+  title.textContent=`מערכת סיכום שיחה – קופה ${currentFund} מתוך ${totalFunds}`;
+  if(stepIndex<steps.length) steps[stepIndex]();
 }
 
-function saveFund() {
-  let line = `${currentFund}. ${data.company} ${data.fundType} מספר קופה ${data.fundNumber} - `;
-
-  if (data.action === "להשאיר") {
-    line += "תישאר";
-  } else {
-    line += `תנוייד לחברה ${data.targetCompany} כאשר הכסף יושקע ב${data.investment} בדמי ניהול ${data.fees}`;
-  }
-
+function saveFund(){
+  let line=`${currentFund}. ${data.company} ${data.fundType} מספר קופה ${data.fundNumber} - `;
+  if(data.action==="להשאיר") line+="תישאר";
+  else line+=`תנוייד לחברה ${data.targetCompany} כאשר הכסף יושקע ב${data.investment} בדמי ניהול ${data.fees}`;
   results.push(line);
 
-  if (currentFund < totalFunds) {
-    currentFund++;
-    data = {};
-    stepIndex = 1;
-    steps[stepIndex]();
-  } else {
-    finish();
-  }
+  if(currentFund<totalFunds){
+    currentFund++; data={}; stepIndex=1; steps[stepIndex]();
+  } else finish();
 }
 
-function finish() {
-  let text = "סיכום שיחה:\n\n" + results.join("\n");
+function finish(){
+  output.textContent="סיכום שיחה:\n\n"+results.join("\n");
+  step.style.display=nextBtn.style.display="none";
+  output.style.display=copyBtn.style.display=resetBtn.style.display="block";
 
-  document.getElementById("step").style.display = "none";
-  document.getElementById("nextBtn").style.display = "none";
-  document.getElementById("output").style.display = "block";
-  document.getElementById("copyBtn").style.display = "block";
-  document.getElementById("resetBtn").style.display = "block";
-  document.getElementById("output").textContent = text;
-
-  document.getElementById("copyBtn").onclick = () => {
-    navigator.clipboard.writeText(text);
-    alert("הועתק!");
-  };
-
-  document.getElementById("resetBtn").onclick = () => {
-    location.reload();
-  };
+  copyBtn.onclick=()=>{navigator.clipboard.writeText(output.textContent);alert("הועתק");};
+  resetBtn.onclick=()=>location.reload();
 }
 
 steps[0]();
