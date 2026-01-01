@@ -4,79 +4,47 @@
   <meta charset="UTF-8">
   <title>סיכום שיחה</title>
   <style>
-    body {
-      direction: rtl;
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
-      padding: 20px;
-    }
-    .box {
-      background: white;
-      max-width: 650px;
-      margin: auto;
-      padding: 20px;
-      border-radius: 8px;
-    }
-    h2 { margin-top: 0; }
-    label { display: block; margin-bottom: 6px; font-weight: bold; }
-    input, select, button {
-      width: 100%;
-      padding: 8px;
-      font-size: 16px;
-      margin-bottom: 12px;
-    }
-    button { cursor: pointer; }
-    .secondary { background: #eee; }
-    pre {
-      background: #eee;
-      padding: 10px;
-      white-space: pre-wrap;
-    }
+    body { direction: rtl; font-family: Arial; background:#f5f5f5; padding:20px; }
+    .box { background:#fff; max-width:650px; margin:auto; padding:20px; border-radius:8px; }
+    label { font-weight:bold; display:block; margin-bottom:6px; }
+    input, select, button { width:100%; padding:8px; font-size:16px; margin-bottom:12px; }
+    pre { background:#eee; padding:10px; white-space:pre-wrap; }
+    .secondary { background:#eee; }
   </style>
 </head>
 <body>
 
 <div class="box">
   <h2 id="title">מערכת סיכום שיחה</h2>
-
   <div id="step"></div>
-
   <button id="nextBtn">המשך</button>
 
   <pre id="output" style="display:none;"></pre>
-  <button id="copyBtn" style="display:none;">📋 העתק סיכום שיחה</button>
+  <button id="copyBtn" style="display:none;">📋 העתק</button>
   <button id="resetBtn" class="secondary" style="display:none;">🔁 סיום</button>
 </div>
 
 <script>
 const companies = [
   "הראל","מגדל","הפניקס","כלל","אלטשולר","מיטב",
-  "אנליסט","אינפיניטי","ילין לפידות","מור","קרן השתלמות לעובדי המדינה"
+  "אנליסט","אינפיניטי","ילין לפידות","מור","מנורה",
+  "קרן השתלמות לעובדי המדינה"
 ];
 
-const fundTypes = [
-  "קופת גמל","קרן השתלמות","פנסיה","קופת גמל להשקעה","פוליסת חיסכון"
-];
+const fundTypes = ["קופת גמל","קרן השתלמות","פנסיה","קופת גמל להשקעה","פוליסת חיסכון"];
 
 const investmentTracks = [
-  { label: "מניות", value: "מניות" },
-  { label: "Snp500", value: "Snp500" },
-  { label: "משולב סחיר", value: "משולב סחיר" },
-  { label: "עוקב מדדים גמיש", value: "עוקב מדדים גמיש" },
-  { label: "מניות סחיר", value: "מניות סחיר" },
-  { label: "עוקב מדדי מניות", value: "עוקב מדדי מניות" },
-  { label: "50% מניות 50% snp500", value: "50% מניות 50% snp500" },
-  { label: "השילוש הקדוש", value: "33% משולב סחיר 33% מדדי מניות 34% snp500" },
-  { label: "חצי חצי אנליסט", value: "50% עוקב מדדים גמיש 50% snp500" }
+  "מניות","Snp500","משולב סחיר","עוקב מדדים גמיש",
+  "מניות סחיר","עוקב מדדי מניות",
+  "50% מניות 50% snp500",
+  "33% משולב סחיר 33% מדדי מניות 34% snp500",
+  "50% עוקב מדדים גמיש 50% snp500"
 ];
 
 const feeOptions = ["0.6%","0.7%","0.8%"];
 
-let totalFunds = 0;
-let currentFund = 1;
-let results = [];
-let data = {};
-let stepIndex = 0;
+let totalFunds=0, currentFund=1, stepIndex=0;
+let data={}, results=[];
 
 const steps = [
   () => askInput("כמה קופות צריך לרשום?", "count", true),
@@ -85,68 +53,41 @@ const steps = [
   () => askInput("מה מספר הקופה?", "fundNumber"),
   () => askSelect("לנייד או להשאיר?", "action", ["לנייד","להשאיר"]),
   () => {
-    if (data.action === "להשאיר") {
-      askSelectAdvanced("מה מסלול ההשקעה עכשיו?", "currentInvestment", investmentTracks);
-      return;
-    }
-    askSelect("לאיזו חברה לנייד?", "targetCompany", companies);
+    if(data.action==="לנייד") askSelect("לאיזו חברה לנייד?", "targetCompany", companies);
+    else askSelect("האם הולך להיות שינוי?", "hasChange", ["כן","לא"]);
   },
   () => {
-    if (data.action === "להשאיר") {
-      askSelectAdvanced("לאיזה מסלול יישאר?", "futureInvestment", investmentTracks);
-      return;
-    }
-    askSelectAdvanced("מסלול השקעה – כאשר הכסף יושקע ב:", "investment", investmentTracks);
+    if(data.action==="לנייד") askSelect("מסלול השקעה – כאשר הכסף יושקע ב:", "investment", investmentTracks);
+    else if(data.hasChange==="כן") askSelect("סוג שינוי", "changeType", ["שינוי מסלול השקעה","מינוי סוכן"]);
+    else saveFund();
   },
   () => {
-    if (data.action === "להשאיר") {
-      saveFund();
-      return;
-    }
-    askSelect("מה דמי הניהול?", "fees", feeOptions);
+    if(data.action==="לנייד") askSelect("מה דמי הניהול?", "fees", feeOptions);
+    else if(data.changeType==="שינוי מסלול השקעה") askSelect("מה מסלול ההשקעה עכשיו?", "currentInvestment", investmentTracks);
+    else saveFund();
+  },
+  () => {
+    if(data.changeType==="שינוי מסלול השקעה") askSelect("לאיזה מסלול יעבור?", "futureInvestment", investmentTracks);
+    else saveFund();
   },
   () => saveFund()
 ];
 
-function askInput(labelText, key, isFirst=false) {
-  step.innerHTML = `<label>${labelText}</label><input id="value">`;
-  nextBtn.onclick = () => {
-    const v = value.value.trim();
-    if (!v) return alert("יש למלא ערך");
-    if (isFirst) {
-      totalFunds = parseInt(v,10);
-      if (isNaN(totalFunds)||totalFunds<1) return alert("מספר לא תקין");
-      next(); return;
-    }
+function askInput(label,key,isFirst=false){
+  step.innerHTML=`<label>${label}</label><input id="value">`;
+  nextBtn.onclick=()=>{
+    const v=value.value.trim();
+    if(!v) return alert("יש למלא");
+    if(isFirst){ totalFunds=parseInt(v); if(totalFunds<1) return alert("שגוי"); next(); return;}
     data[key]=v; next();
   };
 }
 
-function askSelect(labelText, key, options) {
-  step.innerHTML = `
-    <label>${labelText}</label>
-    <select id="value">
-      ${options.map(o=>`<option>${o}</option>`).join("")}
-      <option value="אחר">אחר</option>
-    </select>
-    <input id="other" placeholder="מלל חופשי" style="display:none;">
-  `;
-  value.onchange = ()=> other.style.display = value.value==="אחר"?"block":"none";
-  nextBtn.onclick = ()=>{
-    let v=value.value;
-    if(v==="אחר"){ if(!other.value.trim())return alert("יש למלא"); v=other.value.trim(); }
-    data[key]=v; next();
-  };
-}
-
-function askSelectAdvanced(labelText,key,options){
-  step.innerHTML = `
-    <label>${labelText}</label>
-    <select id="value">
-      ${options.map(o=>`<option value="${o.value}">${o.label}</option>`).join("")}
-      <option value="אחר">אחר</option>
-    </select>
-    <input id="other" placeholder="מלל חופשי" style="display:none;">
+function askSelect(label,key,options){
+  step.innerHTML=`
+    <label>${label}</label>
+    <select id="value">${options.map(o=>`<option>${o}</option>`).join("")}<option>אחר</option></select>
+    <input id="other" style="display:none" placeholder="מלל חופשי">
   `;
   value.onchange=()=>other.style.display=value.value==="אחר"?"block":"none";
   nextBtn.onclick=()=>{
@@ -158,37 +99,34 @@ function askSelectAdvanced(labelText,key,options){
 
 function next(){
   stepIndex++;
-  title.textContent=`מערכת סיכום שיחה – קופה ${currentFund} מתוך ${totalFunds}`;
+  title.textContent=`קופה ${currentFund} מתוך ${totalFunds}`;
   if(stepIndex<steps.length) steps[stepIndex]();
 }
 
 function saveFund(){
-  let line = `${currentFund}. ${data.company} ${data.fundType} מספר קופה ${data.fundNumber}- `;
-
-  if(data.action==="להשאיר"){
-    line += `תישאר באותה חברה כאשר יתבצע שינוי מסלול מ${data.currentInvestment} ל${data.futureInvestment}`;
+  let line=`${currentFund}. ${data.company} ${data.fundType} מספר קופה ${data.fundNumber}- `;
+  if(data.action==="לנייד"){
+    line+=`תנויד לחברה ${data.targetCompany} כאשר הכסף יושקע ב${data.investment} בדמי ניהול ${data.fees}`;
   } else {
-    line += `תנוייד לחברה ${data.targetCompany} כאשר הכסף יושקע ב${data.investment} בדמי ניהול ${data.fees}`;
+    if(data.hasChange==="לא") line+="תישאר ללא שינוי";
+    else if(data.changeType==="מינוי סוכן") line+="תישאר באותה חברה עם מינוי סוכן";
+    else line+=`תישאר באותה חברה כאשר יתבצע שינוי מסלול מ${data.currentInvestment} ל${data.futureInvestment}`;
   }
-
   results.push(line);
 
-  if(currentFund<totalFunds){
-    currentFund++; data={}; stepIndex=1; steps[stepIndex]();
-  } else finish();
+  if(currentFund<totalFunds){ currentFund++; data={}; stepIndex=1; steps[1](); }
+  else finish();
 }
 
 function finish(){
   output.textContent="סיכום שיחה:\n\n"+results.join("\n");
   step.style.display=nextBtn.style.display="none";
   output.style.display=copyBtn.style.display=resetBtn.style.display="block";
-
-  copyBtn.onclick=()=>{navigator.clipboard.writeText(output.textContent);alert("הועתק");};
+  copyBtn.onclick=()=>navigator.clipboard.writeText(output.textContent);
   resetBtn.onclick=()=>location.reload();
 }
 
 steps[0]();
 </script>
-
 </body>
 </html>
