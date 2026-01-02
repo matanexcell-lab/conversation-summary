@@ -145,7 +145,7 @@ function saveFund() {
   let line = `${currentFund}. ${data.company} ${data.fundType} מספר קופה ${data.fundNumber}- `;
 
   if (data.action === "לנייד") {
-    line += `תנויד לחברה ${data.targetCompany} כאשר הכסף יושקע ב${data.investment} בדמי ניהול ${data.fees}`;
+    line += `תנויד לחברת ${data.targetCompany} כאשר הכסף יושקע ב${data.investment} בדמי ניהול ${data.fees}`;
   } else {
     if (data.hasChange === "לא") {
       line += "תישאר ללא שינוי";
