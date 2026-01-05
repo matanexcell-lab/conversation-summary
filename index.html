@@ -5,7 +5,7 @@
 <title>סיכום שיחה</title>
 <style>
 body{direction:rtl;font-family:Arial;background:#f5f5f5;padding:20px}
-.box{background:#fff;max-width:750px;margin:auto;padding:20px;border-radius:8px}
+.box{background:#fff;max-width:760px;margin:auto;padding:20px;border-radius:8px}
 label{font-weight:bold;display:block;margin-bottom:6px}
 input,select,button{width:100%;padding:8px;font-size:16px;margin-bottom:12px}
 pre{background:#eee;padding:10px;white-space:pre-wrap}
@@ -43,9 +43,14 @@ const privatePolicies=[
 
 const privateActions=["לבטל","להשאיר","להפיק חדש"];
 
-const tracks=["מניות","Snp500","משולב סחיר","עוקב מדדים גמיש","מניות סחיר","עוקב מדדי מניות"];
+const tracks=[
+ "מניות","Snp500","משולב סחיר","עוקב מדדים גמיש",
+ "מניות סחיר","עוקב מדדי מניות"
+];
+
 const fees=["0.6%","0.7%","0.8%"];
 
+/* ===== מצב ===== */
 let total=0,current=1,stepIndex=0,data={},results=[];
 
 /* ===== זרימה ===== */
@@ -55,18 +60,19 @@ const steps=[
 ()=>askSelect("מה סוג המוצר?","fundType",fundTypes),
 ()=>askSelect("מה שם החברה?","company",companies),
 
-// ===== ענף פרט =====
+/* ===== פרט ===== */
 ()=>{ if(data.fundType==="פרט") askSelect("מה סוג הפוליסה?","policyType",privatePolicies); else next(); },
 ()=>{ if(data.fundType==="פרט") askSelect("מה לבצע בפוליסה?","policyAction",privateActions); else next(); },
 ()=>{ 
  if(data.fundType==="פרט" && data.policyAction!=="להפיק חדש")
    askInput("מה מספר הפוליסה?","policyNumber");
- else if(data.fundType==="פרט") next();
+ else if(data.fundType==="פרט" && data.policyAction==="להפיק חדש")
+   askInput("מה הפרמיה החודשית?","monthlyPremium");
  else next();
 },
 
-// ===== ענף חיסכון =====
-()=>{ if(data.action!=="פתיחת קופה" && data.fundType!=="פרט") askInput("מה מספר הקופה?","fundNumber"); else next(); },
+/* ===== חיסכון ===== */
+()=>{ if(data.fundType!=="פרט" && data.action!=="פתיחת קופה") askInput("מה מספר הקופה?","fundNumber"); else next(); },
 
 ()=>{ 
  if(data.fundType==="פרט") next();
@@ -99,7 +105,7 @@ const steps=[
  else next();
 },
 
-()=>askSelect("מה דמי הניהול?","fees",fees,true)
+()=>{ if(data.fundType!=="פרט") askSelect("מה דמי הניהול?","fees",fees,true); }
 ];
 
 /* ===== פונקציות ===== */
@@ -135,8 +141,12 @@ function save(){
  let line=prefix;
 
  if(data.fundType==="פרט"){
-  line+=`${data.policyType} בחברת ${data.company} – ${data.policyAction}`;
-  if(data.policyNumber) line+=` פוליסה מספר ${data.policyNumber}`;
+  line+=`${data.policyType} בחברת ${data.company}`;
+  if(data.policyAction!=="להפיק חדש"){
+    line+=` מספר פוליסה ${data.policyNumber} – ${data.policyAction}`;
+  } else {
+    line+=` – להפיק חדש עם פרמיה חודשית בסכום של ${data.monthlyPremium} ₪`;
+  }
  }
  else if(data.action==="פתיחת קופה"){
   line+=`פתיחת ${data.fundType} בחברת ${data.company} כאשר הכסף יושקע במסלול השקעה ${data.investment} בדמי ניהול ${data.fees}`;
