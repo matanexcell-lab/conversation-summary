@@ -5,7 +5,7 @@
 <title>סיכום שיחה</title>
 <style>
 body{direction:rtl;font-family:Arial;background:#f5f5f5;padding:20px}
-.box{background:#fff;max-width:700px;margin:auto;padding:20px;border-radius:8px}
+.box{background:#fff;max-width:750px;margin:auto;padding:20px;border-radius:8px}
 label{font-weight:bold;display:block;margin-bottom:6px}
 input,select,button{width:100%;padding:8px;font-size:16px;margin-bottom:12px}
 pre{background:#eee;padding:10px;white-space:pre-wrap}
@@ -25,35 +25,66 @@ pre{background:#eee;padding:10px;white-space:pre-wrap}
 </div>
 
 <script>
+/* ===== נתונים ===== */
 const companies=["הראל","מגדל","הפניקס","כלל","אלטשולר","מיטב","אנליסט","אינפיניטי","ילין לפידות","מור","מנורה","קרן השתלמות לעובדי המדינה"];
-const fundTypes=["קופת גמל","קרן השתלמות","קרן פנסיה","קופת גמל להשקעה","פוליסת חיסכון"];
-const tracks=["מניות","Snp500","משולב סחיר","עוקב מדדים גמיש","מניות סחיר","עוקב מדדי מניות","50% מניות 50% snp500","33% משולב סחיר 33% מדדי מניות 34% snp500","50% עוקב מדדים גמיש 50% snp500"];
+
+const fundTypes=[
+ "קופת גמל","קרן השתלמות","קרן פנסיה",
+ "קופת גמל להשקעה","פוליסת חיסכון","פרט"
+];
+
+const privatePolicies=[
+ "פוליסת משכנתא",
+ "פוליסת חיים",
+ "פוליסת חיים משועבד",
+ "ביטוח בריאות",
+ "ביטוח בריאות ומחלות קשות"
+];
+
+const privateActions=["לבטל","להשאיר","להפיק חדש"];
+
+const tracks=["מניות","Snp500","משולב סחיר","עוקב מדדים גמיש","מניות סחיר","עוקב מדדי מניות"];
 const fees=["0.6%","0.7%","0.8%"];
 
-let total=0, current=1, stepIndex=0, data={}, results=[];
+let total=0,current=1,stepIndex=0,data={},results=[];
 
+/* ===== זרימה ===== */
 const steps=[
 ()=>askInput("כמה פעולות צריך לרשום?","count",true),
 ()=>askSelect("מה סוג הפעולה?","action",["לנייד","להשאיר","פתיחת קופה"]),
 ()=>askSelect("מה סוג המוצר?","fundType",fundTypes),
 ()=>askSelect("מה שם החברה?","company",companies),
 
-()=>{ if(data.action!=="פתיחת קופה") askInput("מה מספר הקופה?","fundNumber"); else next(); },
+// ===== ענף פרט =====
+()=>{ if(data.fundType==="פרט") askSelect("מה סוג הפוליסה?","policyType",privatePolicies); else next(); },
+()=>{ if(data.fundType==="פרט") askSelect("מה לבצע בפוליסה?","policyAction",privateActions); else next(); },
+()=>{ 
+ if(data.fundType==="פרט" && data.policyAction!=="להפיק חדש")
+   askInput("מה מספר הפוליסה?","policyNumber");
+ else if(data.fundType==="פרט") next();
+ else next();
+},
+
+// ===== ענף חיסכון =====
+()=>{ if(data.action!=="פתיחת קופה" && data.fundType!=="פרט") askInput("מה מספר הקופה?","fundNumber"); else next(); },
 
 ()=>{ 
- if(data.action==="לנייד") askSelect("לאיזו חברה לנייד?","targetCompany",companies);
+ if(data.fundType==="פרט") next();
+ else if(data.action==="לנייד") askSelect("לאיזו חברה לנייד?","targetCompany",companies);
  else if(data.action==="להשאיר") askSelect("האם הולך להיות שינוי?","hasChange",["כן","לא"]);
  else next();
 },
 
 ()=>{ 
- if(data.action==="לנייד") askSelect("מסלול השקעה","investment",tracks);
+ if(data.fundType==="פרט") next();
+ else if(data.action==="לנייד") askSelect("מסלול השקעה","investment",tracks);
  else if(data.hasChange==="כן") askSelect("סוג שינוי","changeType",["שינוי מסלול השקעה","מינוי סוכן"]);
  else next();
 },
 
 ()=>{ 
- if(data.action==="לנייד") askSelect("מה דמי הניהול?","fees",fees,true);
+ if(data.fundType==="פרט") next();
+ else if(data.action==="לנייד") askSelect("מה דמי הניהול?","fees",fees,true);
  else if(data.changeType==="שינוי מסלול השקעה") askSelect("מה המסלול הנוכחי?","currentInvestment",tracks);
  else next();
 },
@@ -64,25 +95,14 @@ const steps=[
 },
 
 ()=>{ 
- if(data.action==="פתיחת קופה") askSelect("מסלול השקעה","investment",tracks);
- else next();
-},
-
-()=>{ 
- if(data.fundType==="קופת גמל להשקעה")
-   askSelect("אופן הפקדה","depositType",["הוראת קבע","העברה חד פעמית","כלום"]);
- else next();
-},
-
-()=>{ 
- if(data.depositType==="הוראת קבע"||data.depositType==="העברה חד פעמית")
-   askInput("מה הסכום?","amount");
+ if(data.action==="פתיחת קופה" && data.fundType!=="פרט") askSelect("מסלול השקעה","investment",tracks);
  else next();
 },
 
 ()=>askSelect("מה דמי הניהול?","fees",fees,true)
 ];
 
+/* ===== פונקציות ===== */
 function updateTitle(){
  title.textContent= total>1 ? `פעולה ${current} מתוך ${total}` : "סיכום שיחה";
 }
@@ -109,31 +129,26 @@ function askSelect(label,key,options,autoSave=false){
 
 function next(){ stepIndex++; if(stepIndex<steps.length)steps[stepIndex](); }
 
+/* ===== שמירה ===== */
 function save(){
  let prefix = total>1 ? `${current}. ` : "";
  let line=prefix;
 
- if(data.action==="פתיחת קופה"){
+ if(data.fundType==="פרט"){
+  line+=`${data.policyType} בחברת ${data.company} – ${data.policyAction}`;
+  if(data.policyNumber) line+=` פוליסה מספר ${data.policyNumber}`;
+ }
+ else if(data.action==="פתיחת קופה"){
   line+=`פתיחת ${data.fundType} בחברת ${data.company} כאשר הכסף יושקע במסלול השקעה ${data.investment} בדמי ניהול ${data.fees}`;
  }
  else if(data.action==="לנייד"){
-  line+=`${data.company} ${data.fundType}`;
-  if(total>1) line+=` מספר קופה ${data.fundNumber}-`;
-  line+=` תנויד לחברת ${data.targetCompany} כאשר הכסף יושקע במסלול השקעה ${data.investment} בדמי ניהול ${data.fees}`;
+  line+=`${data.company} ${data.fundType} מספר קופה ${data.fundNumber}- תנויד לחברת ${data.targetCompany} כאשר הכסף יושקע במסלול השקעה ${data.investment} בדמי ניהול ${data.fees}`;
  }
  else{
-  line+=`${data.company} ${data.fundType}`;
-  if(total>1) line+=` מספר קופה ${data.fundNumber}-`;
-  if(data.hasChange==="לא") line+=" תישאר ללא שינוי";
-  else if(data.changeType==="מינוי סוכן") line+=" תישאר באותה חברה עם מינוי סוכן";
-  else line+=` תישאר באותה חברה כאשר יתבצע שינוי מסלול מ${data.currentInvestment} ל${data.futureInvestment}`;
- }
-
- if(data.depositType==="הוראת קבע"){
-  line+=` עם הוראת קבע בסכום של ${data.amount} ₪ בחודש`;
- }
- if(data.depositType==="העברה חד פעמית"){
-  line+=` עם העברה חד פעמית בסכום של ${data.amount} ₪`;
+  line+=`${data.company} ${data.fundType} מספר קופה ${data.fundNumber}`;
+  if(data.hasChange==="לא") line+=" – תישאר ללא שינוי";
+  else if(data.changeType==="מינוי סוכן") line+=" – תישאר באותה חברה עם מינוי סוכן";
+  else line+=` – תישאר באותה חברה כאשר יתבצע שינוי מסלול מ${data.currentInvestment} ל${data.futureInvestment}`;
  }
 
  results.push(line);
