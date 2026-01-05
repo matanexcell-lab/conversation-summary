@@ -63,11 +63,12 @@ const steps=[
 /* ===== פרט ===== */
 ()=>{ if(data.fundType==="פרט") askSelect("מה סוג הפוליסה?","policyType",privatePolicies); else next(); },
 ()=>{ if(data.fundType==="פרט") askSelect("מה לבצע בפוליסה?","policyAction",privateActions); else next(); },
+
 ()=>{ 
  if(data.fundType==="פרט" && data.policyAction!=="להפיק חדש")
-   askInput("מה מספר הפוליסה?","policyNumber");
+   askInput("מה מספר הפוליסה?","policyNumber",false,true);
  else if(data.fundType==="פרט" && data.policyAction==="להפיק חדש")
-   askInput("מה הפרמיה החודשית?","monthlyPremium");
+   askInput("מה הפרמיה החודשית?","monthlyPremium",false,true);
  else next();
 },
 
@@ -113,13 +114,14 @@ function updateTitle(){
  title.textContent= total>1 ? `פעולה ${current} מתוך ${total}` : "סיכום שיחה";
 }
 
-function askInput(label,key,isFirst=false){
+function askInput(label,key,isFirst=false,autoSave=false){
  updateTitle();
  step.innerHTML=`<label>${label}</label><input id="value">`;
  nextBtn.onclick=()=>{
   if(!value.value.trim())return alert("יש למלא");
   if(isFirst){ total=parseInt(value.value,10); next(); return; }
-  data[key]=value.value.trim(); next();
+  data[key]=value.value.trim();
+  autoSave ? save() : next();
  };
 }
 
