@@ -25,16 +25,13 @@ pre{background:#eee;padding:10px;white-space:pre-wrap}
 </div>
 
 <script>
-/* ===== נתונים ===== */
 const companies=["הראל","מגדל","הפניקס","כלל","אלטשולר","מיטב","אנליסט","אינפיניטי","ילין לפידות","מור","מנורה","קרן השתלמות לעובדי המדינה"];
 const fundTypes=["קופת גמל","קרן השתלמות","קרן פנסיה","קופת גמל להשקעה","פוליסת חיסכון"];
 const tracks=["מניות","Snp500","משולב סחיר","עוקב מדדים גמיש","מניות סחיר","עוקב מדדי מניות","50% מניות 50% snp500","33% משולב סחיר 33% מדדי מניות 34% snp500","50% עוקב מדדים גמיש 50% snp500"];
 const fees=["0.6%","0.7%","0.8%"];
 
-/* ===== מצב ===== */
 let total=0, current=1, stepIndex=0, data={}, results=[];
 
-/* ===== זרימה ===== */
 const steps=[
 ()=>askInput("כמה פעולות צריך לרשום?","count",true),
 ()=>askSelect("מה סוג הפעולה?","action",["לנייד","להשאיר","פתיחת קופה"]),
@@ -50,7 +47,7 @@ const steps=[
 },
 
 ()=>{ 
- if(data.action==="לנייד") askSelect("כאשר הכסף יהיה מושקע ב","investment",tracks);
+ if(data.action==="לנייד") askSelect("מסלול השקעה","investment",tracks);
  else if(data.hasChange==="כן") askSelect("סוג שינוי","changeType",["שינוי מסלול השקעה","מינוי סוכן"]);
  else next();
 },
@@ -67,7 +64,7 @@ const steps=[
 },
 
 ()=>{ 
- if(data.action==="פתיחת קופה") askSelect("כאשר הכסף יהיה מושקע ב","investment",tracks);
+ if(data.action==="פתיחת קופה") askSelect("מסלול השקעה","investment",tracks);
  else next();
 },
 
@@ -86,7 +83,6 @@ const steps=[
 ()=>askSelect("מה דמי הניהול?","fees",fees,true)
 ];
 
-/* ===== פונקציות ===== */
 function updateTitle(){
  title.textContent= total>1 ? `פעולה ${current} מתוך ${total}` : "סיכום שיחה";
 }
@@ -118,12 +114,12 @@ function save(){
  let line=prefix;
 
  if(data.action==="פתיחת קופה"){
-  line+=`פתיחת ${data.fundType} בחברת ${data.company} כאשר הכסף יהיה מושקע ב${data.investment} בדמי ניהול ${data.fees}`;
+  line+=`פתיחת ${data.fundType} בחברת ${data.company} כאשר הכסף יושקע במסלול השקעה ${data.investment} בדמי ניהול ${data.fees}`;
  }
  else if(data.action==="לנייד"){
   line+=`${data.company} ${data.fundType}`;
   if(total>1) line+=` מספר קופה ${data.fundNumber}-`;
-  line+=` תנויד לחברת ${data.targetCompany} כאשר הכסף יהיה מושקע ב${data.investment} בדמי ניהול ${data.fees}`;
+  line+=` תנויד לחברת ${data.targetCompany} כאשר הכסף יושקע במסלול השקעה ${data.investment} בדמי ניהול ${data.fees}`;
  }
  else{
   line+=`${data.company} ${data.fundType}`;
@@ -133,8 +129,12 @@ function save(){
   else line+=` תישאר באותה חברה כאשר יתבצע שינוי מסלול מ${data.currentInvestment} ל${data.futureInvestment}`;
  }
 
- if(data.depositType==="הוראת קבע") line+=` עם הוראת קבע בסכום ${data.amount} ₪`;
- if(data.depositType==="העברה חד פעמית") line+=` עם העברה חד פעמית בסכום ${data.amount} ₪`;
+ if(data.depositType==="הוראת קבע"){
+  line+=` עם הוראת קבע בסכום של ${data.amount} ₪ בחודש`;
+ }
+ if(data.depositType==="העברה חד פעמית"){
+  line+=` עם העברה חד פעמית בסכום של ${data.amount} ₪`;
+ }
 
  results.push(line);
 
@@ -143,7 +143,7 @@ function save(){
 }
 
 function finish(){
- output.textContent="סיכום שיחה:\n\n"+results.join("\n");
+ output.textContent=results.join("\n");
  step.style.display=nextBtn.style.display="none";
  output.style.display=copyBtn.style.display=resetBtn.style.display="block";
  copyBtn.onclick=()=>navigator.clipboard.writeText(output.textContent);
