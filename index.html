@@ -15,7 +15,7 @@ pre{background:#eee;padding:10px;white-space:pre-wrap}
 <body>
 
 <div class="box">
-<h2 id="title">מערכת סיכום שיחה</h2>
+<h2 id="title">סיכום שיחה</h2>
 <div id="step"></div>
 <button id="nextBtn">המשך</button>
 
@@ -41,26 +41,45 @@ const privatePolicies=[
 
 const privateActions=["לבטל","להשאיר","להפיק חדש"];
 
+const actions=["ניוד","השארה","פתיחת קופה","פרט"];
+
 /* ===== מצב ===== */
 let total=0,current=1,stepIndex=0,data={},results=[];
 
-/* ===== זרימה ===== */
+/* ===== שלבים ===== */
 const steps=[
 ()=>askInput("כמה פעולות צריך לרשום?","count",true),
 
-()=>askSelect("מה סוג הפעולה?","action",["פרט"]),
+()=>askSelect("מה סוג הפעולה?","action",actions),
 
+()=>branch()
+];
+
+/* ===== פיצול לוגיקה ===== */
+function branch(){
+ if(data.action==="פרט") return privateFlow();
+ alert("שאר סוגי הפעולות קיימים אך לא נדרשו בשלב זה");
+ stepIndex=1; data={}; steps[1]();
+}
+
+/* ===== זרימת פרט ===== */
+function privateFlow(){
+ stepIndex=100;
+ stepsPrivate[0]();
+}
+
+const stepsPrivate=[
 ()=>askSelect("מה סוג הפוליסה?","policyType",privatePolicies),
 
 ()=>askSelect("מה לבצע בפוליסה?","policyAction",privateActions),
 
 ()=>askSelect("מה שם חברת הביטוח?","company",insuranceCompanies),
 
-()=>{ 
- if(data.policyAction!=="להפיק חדש")
-   askInput("מה מספר הפוליסה?","policyNumber",false,true);
- else
+()=>{
+ if(data.policyAction==="להפיק חדש")
    askInput("מה הפרמיה החודשית?","monthlyPremium",false,true);
+ else
+   askInput("מה מספר הפוליסה?","policyNumber",false,true);
 }
 ];
 
@@ -87,7 +106,14 @@ function askSelect(label,key,options){
  nextBtn.onclick=()=>{ data[key]=value.value; next(); };
 }
 
-function next(){ stepIndex++; if(stepIndex<steps.length)steps[stepIndex](); }
+function next(){
+ stepIndex++;
+ if(stepIndex<steps.length)steps[stepIndex]();
+ else if(stepIndex>=100){
+  let i=stepIndex-100;
+  if(i<stepsPrivate.length)stepsPrivate[i]();
+ }
+}
 
 /* ===== שמירה ===== */
 function save(){
@@ -106,12 +132,18 @@ function save(){
 
  results.push(line);
 
- if(current<total){ current++; data={}; stepIndex=1; steps[1](); }
+ if(current<total){
+  current++; data={}; stepIndex=1; steps[1]();
+ }
  else finish();
 }
 
 function finish(){
- output.textContent=results.join("\n");
+ output.textContent=
+`בהמשך לשיחתנו
+סוכם על הדברים הבאים:
+
+${results.join("\n")}`;
  step.style.display=nextBtn.style.display="none";
  output.style.display=copyBtn.style.display=resetBtn.style.display="block";
  copyBtn.onclick=()=>navigator.clipboard.writeText(output.textContent);
