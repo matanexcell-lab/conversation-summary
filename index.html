@@ -25,6 +25,7 @@
 </div>
 
 <script>
+/* ===== נתונים ===== */
 const companies = [
   "הראל","מגדל","הפניקס","כלל","אלטשולר","מיטב",
   "אנליסט","אינפיניטי","ילין לפידות","מור","מנורה",
@@ -49,25 +50,44 @@ const investmentTracks = [
 
 const feeOptions = ["0.6%","0.7%","0.8%"];
 
+/* ===== מצב ===== */
 let totalFunds = 0;
 let currentFund = 1;
 let stepIndex = 0;
 let data = {};
 let results = [];
 
+/* ===== זרימה ===== */
 const steps = [
-  () => askInput("כמה קופות צריך לרשום?", "count", true),
+  () => askInput("כמה פעולות צריך לרשום?", "count", true),
+  () => askSelect("מה סוג הפעולה?", "action", ["לנייד","להשאיר","פתיחת קופה"]),
+  () => {
+    if (data.action === "פתיחת קופה") {
+      askSelect("מה סוג המוצר?", "fundType", fundTypes);
+    } else {
+      askSelect("מה סוג הקופה?", "fundType", fundTypes);
+    }
+  },
   () => askSelect("מה שם החברה?", "company", companies),
-  () => askSelect("מה סוג הקופה?", "fundType", fundTypes),
-  () => askInput("מה מספר הקופה?", "fundNumber"),
-  () => askSelect("לנייד או להשאיר?", "action", ["לנייד","להשאיר"]),
+
+  () => {
+    if (data.action === "פתיחת קופה") {
+      askSelect("מסלול השקעה – כאשר הכסף יושקע ב:", "investment", investmentTracks);
+    } else {
+      askInput("מה מספר הקופה?", "fundNumber");
+    }
+  },
+
   () => {
     if (data.action === "לנייד") {
       askSelect("לאיזו חברה לנייד?", "targetCompany", companies);
-    } else {
+    } else if (data.action === "להשאיר") {
       askSelect("האם הולך להיות שינוי?", "hasChange", ["כן","לא"]);
+    } else {
+      askSelect("מה דמי הניהול?", "fees", feeOptions, true);
     }
   },
+
   () => {
     if (data.action === "לנייד") {
       askSelect("מסלול השקעה – כאשר הכסף יושקע ב:", "investment", investmentTracks);
@@ -77,25 +97,27 @@ const steps = [
       saveFund();
     }
   },
+
   () => {
     if (data.action === "לנייד") {
       askSelect("מה דמי הניהול?", "fees", feeOptions, true);
     } else if (data.changeType === "שינוי מסלול השקעה") {
       askSelect("מה מסלול ההשקעה עכשיו?", "currentInvestment", investmentTracks);
-    } else {
-      saveFund();
     }
   },
+
   () => {
     if (data.changeType === "שינוי מסלול השקעה") {
       askSelect("לאיזה מסלול יעבור?", "futureInvestment", investmentTracks);
     }
   },
+
   () => saveFund()
 ];
 
+/* ===== פונקציות ===== */
 function updateTitle() {
-  title.textContent = `קופה ${currentFund} מתוך ${totalFunds}`;
+  title.textContent = `פעולה ${currentFund} מתוך ${totalFunds}`;
 }
 
 function askInput(label, key, isFirst=false) {
@@ -106,7 +128,7 @@ function askInput(label, key, isFirst=false) {
     if (!v) return alert("יש למלא ערך");
     if (isFirst) {
       totalFunds = parseInt(v,10);
-      if (isNaN(totalFunds) || totalFunds < 1) return alert("מספר לא תקין");
+      if (isNaN(totalFunds)||totalFunds<1) return alert("מספר לא תקין");
       next(); return;
     }
     data[key] = v;
@@ -142,11 +164,16 @@ function next() {
 }
 
 function saveFund() {
-  let line = `${currentFund}. ${data.company} ${data.fundType} מספר קופה ${data.fundNumber}- `;
+  let line = `${currentFund}. `;
 
-  if (data.action === "לנייד") {
-    line += `תנויד לחברת ${data.targetCompany} כאשר הכסף יושקע ב${data.investment} בדמי ניהול ${data.fees}`;
-  } else {
+  if (data.action === "פתיחת קופה") {
+    line += `פתיחת ${data.fundType} בחברת ${data.company} במסלול ${data.investment} בדמי ניהול ${data.fees}`;
+  } 
+  else if (data.action === "לנייד") {
+    line += `${data.company} ${data.fundType} מספר קופה ${data.fundNumber}- תנויד לחברת ${data.targetCompany} כאשר הכסף יושקע ב${data.investment} בדמי ניהול ${data.fees}`;
+  } 
+  else {
+    line += `${data.company} ${data.fundType} מספר קופה ${data.fundNumber}- `;
     if (data.hasChange === "לא") {
       line += "תישאר ללא שינוי";
     } else if (data.changeType === "מינוי סוכן") {
