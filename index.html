@@ -1,172 +1,353 @@
 <!DOCTYPE html>
 <html lang="he">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>סיכום שיחה</title>
 <style>
-body{direction:rtl;font-family:Arial;background:#f5f5f5;padding:20px}
-.box{background:#fff;max-width:760px;margin:auto;padding:20px;border-radius:8px}
-label{font-weight:bold;display:block;margin-bottom:6px}
-input,select,button{width:100%;padding:10px;font-size:16px;margin-bottom:12px}
-pre{background:#eee;padding:12px;white-space:pre-wrap}
-.secondary{background:#eee}
+  body{direction:rtl;font-family:Arial;background:#f5f5f5;padding:20px}
+  .box{background:#fff;max-width:820px;margin:auto;padding:20px;border-radius:10px}
+  h2{margin-top:0}
+  label{font-weight:bold;display:block;margin-bottom:6px}
+  input,select,button{width:100%;padding:10px;font-size:16px;margin-bottom:12px;box-sizing:border-box}
+  button{cursor:pointer}
+  pre{background:#eee;padding:12px;white-space:pre-wrap;border-radius:8px}
+  .secondary{background:#eee}
 </style>
 </head>
 <body>
 
 <div class="box">
-<h2 id="title">סיכום שיחה</h2>
-<div id="step"></div>
-<button id="nextBtn">המשך</button>
+  <h2 id="title">סיכום שיחה</h2>
+  <div id="step"></div>
+  <button id="nextBtn">המשך</button>
 
-<pre id="output" style="display:none"></pre>
-<button id="copyBtn" style="display:none">📋 העתק</button>
-<button id="resetBtn" class="secondary" style="display:none">🔁 סיום</button>
+  <pre id="output" style="display:none"></pre>
+  <button id="copyBtn" style="display:none">📋 העתק</button>
+  <button id="resetBtn" class="secondary" style="display:none">🔁 סיום</button>
 </div>
 
 <script>
-/* ===== נתונים ===== */
+/* =======================
+   CONFIG / OPTIONS
+======================= */
 
-const actions=["ניוד","השארה","פתיחת קופה","פרט"];
+const ACTIONS = ["ניוד","השארה","פתיחת קופה","פרט"];
 
-const insuranceCompanies=[
- "מגדל","מנורה","הפניקס","הכשרה","ביטוח ישיר","כלל","איילון"
+const INVESTMENT_COMPANIES = [
+  "הראל","כלל","הפניקס","מגדל","מור","אלטשולר שחם","אנליסט","ילין לפידות","אינפיניטי","מיטב דש","הכשרה","מנורה"
 ];
 
-const privatePolicies=[
- "פוליסת משכנתא",
- "פוליסת חיים",
- "פוליסת חיים משועבדת",
- "ביטוח בריאות",
- "ביטוח בריאות ומחלות קשות"
+const INSURANCE_COMPANIES = [
+  "מגדל","מנורה","הפניקס","הכשרה","ביטוח ישיר","כלל","איילון"
 ];
 
-const privateActions=["לבטל","להשאיר","להפיק חדש"];
+const FUND_TYPES = [
+  "קופת גמל",
+  "קרן השתלמות",
+  "קרן פנסיה",
+  "קופת גמל להשקעה",
+  "פוליסת חיסכון"
+];
 
-/* ===== מצב ===== */
-let total=0,current=1;
-let data={},results=[];
-let flow=[],flowIndex=0;
+const TRACKS = [
+  "מניות",
+  "Snp500",
+  "משולב סחיר",
+  "עוקב מדדים גמיש",
+  "מניות סחיר",
+  "עוקב מדדי מניות",
+  "50% מניות 50% snp500",
+  "השלוש הקדוש",
+  "חצי חצי אנליסט"
+];
 
-/* ===== התחלה ===== */
-start();
+const FEES = ["0.6%","0.7%","0.8%"];
 
-function start(){
- askInput("כמה פעולות צריך לרשום?","count",true);
-}
+const PRIVATE_POLICIES = [
+  "פוליסת משכנתא",
+  "פוליסת חיים",
+  "פוליסת חיים משועבדת",
+  "ביטוח בריאות",
+  "ביטוח בריאות ומחלות קשות"
+];
 
-/* ===== בחירת פעולה ===== */
-function chooseAction(){
- askSelect("מה סוג הפעולה?","action",actions,()=>{
-   if(data.action==="פרט") buildPrivateFlow();
-   else buildSimpleFlow();
-   nextInFlow();
- });
-}
+const PRIVATE_ACTIONS = ["לבטל","להשאיר","להפיק חדש"];
 
-/* ===== זרימה לפרט ===== */
-function buildPrivateFlow(){
- flow=[
-  ()=>askSelect("מה סוג הפוליסה?","policyType",privatePolicies,nextInFlow),
-  ()=>askSelect("מה לבצע בפוליסה?","policyAction",privateActions,nextInFlow),
-  ()=>askSelect("מה שם חברת הביטוח?","company",insuranceCompanies,nextInFlow),
-  ()=>{
-    if(data.policyAction==="להפיק חדש")
-      askInput("מה הפרמיה החודשית?","monthlyPremium",false,save);
-    else
-      askInput("מה מספר הפוליסה?","policyNumber",false,save);
-  }
- ];
- flowIndex=0;
-}
+const KGI_PAY_OPTIONS = ["אין","הוראת קבע","העברה חד פעמית"];
 
-/* ===== זרימה פשוטה (ניוד / השארה / פתיחת קופה) ===== */
-function buildSimpleFlow(){
- flow=[
-  ()=>askInput("תיאור קצר לפעולה","description",false,save)
- ];
- flowIndex=0;
-}
+/* =======================
+   STATE
+======================= */
 
-/* ===== תנועה בזרימה ===== */
-function nextInFlow(){
- if(flowIndex<flow.length){
-   flow[flowIndex++]();
- }
-}
+let total = 0;
+let current = 1;
 
-/* ===== UI ===== */
+let data = {};
+let results = [];
+
+let flow = [];
+let flowIndex = 0;
+
+/* =======================
+   BOOT
+======================= */
+
+askInput("כמה פעולות צריך לרשום?","count",true);
+
+/* =======================
+   UI HELPERS
+======================= */
+
 function updateTitle(){
- title.textContent = total>1 ? `פעולה ${current} מתוך ${total}` : "סיכום שיחה";
+  title.textContent = total > 1 ? `פעולה ${current} מתוך ${total}` : "סיכום שיחה";
 }
 
-function askInput(label,key,isFirst=false,onDone){
- updateTitle();
- step.innerHTML=`<label>${label}</label><input id="value">`;
- nextBtn.onclick=()=>{
-   if(!value.value.trim()) return alert("יש למלא");
-   if(isFirst){
-     total=parseInt(value.value,10);
-     data={};
-     chooseAction();
-     return;
-   }
-   data[key]=value.value.trim();
-   onDone ? onDone() : null;
- };
+function askInput(label, key, isFirst=false, autoDoneFn=null){
+  updateTitle();
+  step.innerHTML = `<label>${label}</label><input id="value" />`;
+  nextBtn.onclick = () => {
+    const v = value.value.trim();
+    if(!v) return alert("יש למלא");
+    if(isFirst){
+      total = parseInt(v,10);
+      if(!Number.isFinite(total) || total<=0) return alert("מספר לא תקין");
+      data = {};
+      chooseAction();
+      return;
+    }
+    data[key] = v;
+    if(autoDoneFn) autoDoneFn();
+    else nextInFlow();
+  };
 }
 
-function askSelect(label,key,options,onDone){
- updateTitle();
- step.innerHTML=`<label>${label}</label>
- <select id="value">${options.map(o=>`<option>${o}</option>`).join("")}</select>`;
- nextBtn.onclick=()=>{
-   data[key]=value.value;
-   onDone ? onDone() : null;
- };
+function askSelect(label, key, options, autoDoneFn=null, includeOther=false){
+  updateTitle();
+
+  let opts = options.slice();
+  if(includeOther) opts = opts.concat(["אחר"]);
+
+  step.innerHTML = `
+    <label>${label}</label>
+    <select id="value">
+      ${opts.map(o=>`<option>${o}</option>`).join("")}
+    </select>
+    <div id="otherBox" style="display:none"></div>
+  `;
+
+  const selectEl = document.getElementById("value");
+  const otherBox = document.getElementById("otherBox");
+
+  function renderOther(){
+    if(selectEl.value === "אחר"){
+      otherBox.style.display = "block";
+      otherBox.innerHTML = `<label>רשום מלל חופשי</label><input id="otherValue" />`;
+    } else {
+      otherBox.style.display = "none";
+      otherBox.innerHTML = "";
+    }
+  }
+  selectEl.onchange = renderOther;
+  renderOther();
+
+  nextBtn.onclick = () => {
+    if(selectEl.value === "אחר"){
+      const otherValue = document.getElementById("otherValue");
+      const txt = (otherValue?.value || "").trim();
+      if(!txt) return alert("יש למלא מלל חופשי");
+      data[key] = txt;
+    } else {
+      data[key] = selectEl.value;
+    }
+    if(autoDoneFn) autoDoneFn();
+    else nextInFlow();
+  };
 }
 
-/* ===== שמירה ===== */
+/* =======================
+   FLOW CONTROL
+======================= */
+
+function chooseAction(){
+  askSelect("מה סוג הפעולה?","action",ACTIONS,()=>{
+    buildFlowForAction();
+    nextInFlow();
+  });
+}
+
+function nextInFlow(){
+  if(flowIndex < flow.length){
+    flow[flowIndex++]();
+  }
+}
+
+/* =======================
+   BUILD FLOWS
+======================= */
+
+function buildFlowForAction(){
+  flow = [];
+  flowIndex = 0;
+
+  if(data.action === "ניוד"){
+    flow = [
+      () => askSelect("מה שם החברה הנוכחית?","company",INVESTMENT_COMPANIES,nextInFlow,true),
+      () => askSelect("מה סוג הקופה?","fundType",FUND_TYPES,nextInFlow,true),
+      () => askInput("מה מספר הקופה?","fundNumber",false,nextInFlow),
+      () => askSelect("לאיזו חברה לנייד?","targetCompany",INVESTMENT_COMPANIES,nextInFlow,true),
+      () => askSelect("מה מסלול ההשקעה?","investment",TRACKS,nextInFlow,true),
+      () => askSelect("מה דמי הניהול?","fees",FEES,save,false)
+    ];
+    return;
+  }
+
+  if(data.action === "השארה"){
+    flow = [
+      () => askSelect("מה שם החברה?","company",INVESTMENT_COMPANIES,nextInFlow,true),
+      () => askSelect("מה סוג הקופה?","fundType",FUND_TYPES,nextInFlow,true),
+      () => askInput("מה מספר הקופה?","fundNumber",false,nextInFlow),
+      () => askSelect("האם הולך להיות שינוי?","hasChange",["כן","לא"],()=>{
+        if(data.hasChange === "כן"){
+          nextInFlow(); // למסלול נוכחי
+        } else {
+          save();
+        }
+      }),
+      () => askSelect("מה המסלול הנוכחי?","currentInvestment",TRACKS,nextInFlow,true),
+      () => askSelect("לאיזה מסלול יעבור?","futureInvestment",TRACKS,save,true)
+    ];
+    return;
+  }
+
+  if(data.action === "פתיחת קופה"){
+    flow = [
+      () => askSelect("מה סוג המוצר?","fundType",FUND_TYPES,nextInFlow,true),
+      () => askSelect("מה שם החברה?","company",INVESTMENT_COMPANIES,nextInFlow,true),
+      () => askSelect("מה מסלול ההשקעה?","investment",TRACKS,nextInFlow,true),
+      () => askSelect("מה דמי הניהול?","fees",FEES,()=>{
+        // אם זה קופת גמל להשקעה – לשאול הוראת קבע/חד פעמי/כלום
+        if(data.fundType === "קופת גמל להשקעה"){
+          nextInFlow();
+        } else {
+          save();
+        }
+      }),
+      () => askSelect("בקופת גמל להשקעה: האם יש הוראת קבע / העברה חד פעמית / כלום?","kgiPayType",KGI_PAY_OPTIONS,()=>{
+        if(data.kgiPayType === "הוראת קבע"){
+          askInput("מה הסכום (לדוגמה 1000)?","kgiAmount",false,save);
+        } else if(data.kgiPayType === "העברה חד פעמית"){
+          askInput("מה הסכום (לדוגמה 10000)?","kgiAmount",false,save);
+        } else {
+          save();
+        }
+      })
+    ];
+    return;
+  }
+
+  // פרט
+  if(data.action === "פרט"){
+    flow = [
+      () => askSelect("מה סוג הפוליסה?","policyType",PRIVATE_POLICIES,nextInFlow,false),
+      () => askSelect("מה לבצע בפוליסה?","policyAction",PRIVATE_ACTIONS,nextInFlow,false),
+      () => askSelect("מה שם חברת הביטוח?","company",INSURANCE_COMPANIES,nextInFlow,false),
+      () => {
+        if(data.policyAction === "להפיק חדש"){
+          askInput("מה הפרמיה החודשית?","monthlyPremium",false,save);
+        } else {
+          askInput("מה מספר הפוליסה?","policyNumber",false,save);
+        }
+      }
+    ];
+  }
+}
+
+/* =======================
+   OUTPUT HELPERS
+======================= */
+
+function normalizeTrackForOutput(track){
+  // מיפויים מיוחדים לפלט
+  if(track === "השלוש הקדוש") return "33% משולב סחיר 33% מדדי מניות 34% snp500";
+  if(track === "חצי חצי אנליסט") return "50% עוקב מדדים גמיש 50% snp500";
+  return track;
+}
+
+/* =======================
+   SAVE / BUILD LINE
+======================= */
+
 function save(){
- let prefix = total>1 ? `${current}. ` : "";
- let line = prefix;
+  const prefix = total > 1 ? `${current}. ` : "";
+  let line = prefix;
 
- if(data.action==="פרט"){
-   if(data.policyAction==="לבטל"){
-     line+=`${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber} – תבוטל`;
-   }
-   else if(data.policyAction==="להשאיר"){
-     line+=`${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber} – תישאר`;
-   }
-   else{
-     line+=`תופק פוליסה חדשה של ${data.policyType} בחברת ${data.company} בפרמיה חודשית של ${data.monthlyPremium} ₪`;
-   }
- } else {
-   line+=`${data.action}: ${data.description}`;
- }
+  if(data.action === "פרט"){
+    if(data.policyAction === "לבטל"){
+      line += `${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber} – תבוטל`;
+    } else if(data.policyAction === "להשאיר"){
+      line += `${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber} – תישאר`;
+    } else {
+      line += `תופק פוליסה חדשה של ${data.policyType} בחברת ${data.company} בפרמיה חודשית של ${data.monthlyPremium} ₪`;
+    }
+  }
 
- results.push(line);
+  if(data.action === "ניוד"){
+    const inv = normalizeTrackForOutput(data.investment);
+    line += `${data.company} ${data.fundType} מספר קופה ${data.fundNumber}- תנויד לחברת ${data.targetCompany} כאשר הכסף יושקע במסלול השקעה ${inv} בדמי ניהול ${data.fees}`;
+  }
 
- if(current<total){
-   current++;
-   data={};
-   chooseAction();
- } else {
-   finish();
- }
+  if(data.action === "השארה"){
+    if(data.hasChange === "לא"){
+      line += `${data.company} ${data.fundType} מספר קופה ${data.fundNumber} – תישאר ללא שינוי`;
+    } else {
+      const cur = normalizeTrackForOutput(data.currentInvestment);
+      const fut = normalizeTrackForOutput(data.futureInvestment);
+      line += `${data.company} ${data.fundType} מספר קופה ${data.fundNumber} – תישאר באותה חברה כאשר יתבצע שינוי מסלול מ${cur} ל${fut}`;
+    }
+  }
+
+  if(data.action === "פתיחת קופה"){
+    const inv = normalizeTrackForOutput(data.investment);
+    line += `פתיחת ${data.fundType} בחברת ${data.company} כאשר הכסף יושקע במסלול השקעה ${inv} בדמי ניהול ${data.fees}`;
+
+    if(data.fundType === "קופת גמל להשקעה" && data.kgiPayType && data.kgiPayType !== "אין"){
+      const amt = (data.kgiAmount || "").trim();
+      if(data.kgiPayType === "הוראת קבע"){
+        line += ` עם הוראת קבע בסכום של ${amt} ₪ בחודש`;
+      } else {
+        line += ` עם העברה חד פעמית בסכום של ${amt} ₪`;
+      }
+    }
+  }
+
+  results.push(line);
+
+  // next item or finish
+  if(current < total){
+    current++;
+    data = {};
+    chooseAction();
+  } else {
+    finish();
+  }
 }
 
-/* ===== סיום ===== */
-function finish(){
- output.textContent=
-`בהמשך לשיחתנו
-סוכם על הדברים הבאים:
+/* =======================
+   FINISH
+======================= */
 
-${results.join("\n")}`;
- step.style.display=nextBtn.style.display="none";
- output.style.display=copyBtn.style.display=resetBtn.style.display="block";
- copyBtn.onclick=()=>navigator.clipboard.writeText(output.textContent);
- resetBtn.onclick=()=>location.reload();
+function finish(){
+  const header = `בהמשך לשיחתנו\nסוכם על הדברים הבאים:\n\n`;
+  output.textContent = header + results.join("\n");
+
+  step.style.display = "none";
+  nextBtn.style.display = "none";
+  output.style.display = "block";
+  copyBtn.style.display = "block";
+  resetBtn.style.display = "block";
+
+  copyBtn.onclick = () => navigator.clipboard.writeText(output.textContent);
+  resetBtn.onclick = () => location.reload();
 }
 </script>
 
