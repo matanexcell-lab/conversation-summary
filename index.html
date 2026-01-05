@@ -4,11 +4,36 @@
 <meta charset="UTF-8">
 <title>סיכום שיחה</title>
 <style>
-body{direction:rtl;font-family:Arial;background:#f5f5f5;padding:20px}
-.box{background:#fff;max-width:760px;margin:auto;padding:20px;border-radius:8px}
-label{font-weight:bold;display:block;margin-bottom:6px}
-input,select,button{width:100%;padding:8px;font-size:16px;margin-bottom:12px}
-pre{background:#eee;padding:10px;white-space:pre-wrap}
+body{
+  direction:rtl;
+  font-family:Arial;
+  background:#f5f5f5;
+  padding:20px
+}
+.box{
+  background:#fff;
+  max-width:760px;
+  margin:auto;
+  padding:20px;
+  border-radius:8px
+}
+label{
+  font-weight:bold;
+  display:block;
+  margin-bottom:6px
+}
+input,select,button{
+  width:100%;
+  padding:10px;
+  font-size:16px;
+  margin-bottom:12px
+}
+button{cursor:pointer}
+pre{
+  background:#eee;
+  padding:12px;
+  white-space:pre-wrap
+}
 .secondary{background:#eee}
 </style>
 </head>
@@ -27,6 +52,8 @@ pre{background:#eee;padding:10px;white-space:pre-wrap}
 <script>
 /* ===== נתונים ===== */
 
+const actions=["ניוד","השארה","פתיחת קופה","פרט"];
+
 const insuranceCompanies=[
  "מגדל","מנורה","הפניקס","הכשרה","ביטוח ישיר","כלל","איילון"
 ];
@@ -41,115 +68,132 @@ const privatePolicies=[
 
 const privateActions=["לבטל","להשאיר","להפיק חדש"];
 
-const actions=["ניוד","השארה","פתיחת קופה","פרט"];
-
 /* ===== מצב ===== */
-let total=0,current=1,stepIndex=0,data={},results=[];
+let total=0,current=1,stepIndex=0;
+let data={},results=[];
 
-/* ===== שלבים ===== */
+/* ===== שלבים ראשיים ===== */
 const steps=[
-()=>askInput("כמה פעולות צריך לרשום?","count",true),
-
-()=>askSelect("מה סוג הפעולה?","action",actions),
-
-()=>branch()
+ ()=>askInput("כמה פעולות צריך לרשום?","count",true),
+ ()=>askSelect("מה סוג הפעולה?","action",actions),
+ ()=>routeAction()
 ];
 
-/* ===== פיצול לוגיקה ===== */
-function branch(){
- if(data.action==="פרט") return privateFlow();
- alert("שאר סוגי הפעולות קיימים אך לא נדרשו בשלב זה");
- stepIndex=1; data={}; steps[1]();
+/* ===== ניווט לפי סוג פעולה ===== */
+function routeAction(){
+ if(data.action==="פרט"){
+   stepIndex=100;
+   privateSteps[0]();
+   return;
+ }
+ // כרגע מטפלים רק בפרט – שאר הפעולות יתווספו בהמשך
+ data={};
+ stepIndex=1;
+ steps[1]();
 }
 
-/* ===== זרימת פרט ===== */
-function privateFlow(){
- stepIndex=100;
- stepsPrivate[0]();
-}
-
-const stepsPrivate=[
-()=>askSelect("מה סוג הפוליסה?","policyType",privatePolicies),
-
-()=>askSelect("מה לבצע בפוליסה?","policyAction",privateActions),
-
-()=>askSelect("מה שם חברת הביטוח?","company",insuranceCompanies),
-
-()=>{
- if(data.policyAction==="להפיק חדש")
-   askInput("מה הפרמיה החודשית?","monthlyPremium",false,true);
- else
-   askInput("מה מספר הפוליסה?","policyNumber",false,true);
-}
+/* ===== שלבי פרט ===== */
+const privateSteps=[
+ ()=>askSelect("מה סוג הפוליסה?","policyType",privatePolicies),
+ ()=>askSelect("מה לבצע בפוליסה?","policyAction",privateActions),
+ ()=>askSelect("מה שם חברת הביטוח?","company",insuranceCompanies),
+ ()=>{
+   if(data.policyAction==="להפיק חדש"){
+     askInput("מה הפרמיה החודשית?","monthlyPremium",false,true);
+   } else {
+     askInput("מה מספר הפוליסה?","policyNumber",false,true);
+   }
+ }
 ];
 
-/* ===== פונקציות ===== */
+/* ===== פונקציות UI ===== */
 function updateTitle(){
- title.textContent= total>1 ? `פעולה ${current} מתוך ${total}` : "סיכום שיחה";
+ title.textContent = total>1 ? `פעולה ${current} מתוך ${total}` : "סיכום שיחה";
 }
 
 function askInput(label,key,isFirst=false,autoSave=false){
  updateTitle();
  step.innerHTML=`<label>${label}</label><input id="value">`;
  nextBtn.onclick=()=>{
-  if(!value.value.trim())return alert("יש למלא");
-  if(isFirst){ total=parseInt(value.value,10); next(); return; }
-  data[key]=value.value.trim();
-  autoSave?save():next();
+   if(!value.value.trim()) return alert("יש למלא");
+   if(isFirst){
+     total=parseInt(value.value,10);
+     next();
+     return;
+   }
+   data[key]=value.value.trim();
+   autoSave ? save() : next();
  };
 }
 
 function askSelect(label,key,options){
  updateTitle();
  step.innerHTML=`<label>${label}</label>
- <select id="value">${options.map(o=>`<option>${o}</option>`).join("")}</select>`;
- nextBtn.onclick=()=>{ data[key]=value.value; next(); };
+ <select id="value">
+ ${options.map(o=>`<option>${o}</option>`).join("")}
+ </select>`;
+ nextBtn.onclick=()=>{
+   data[key]=value.value;
+   next();
+ };
 }
 
 function next(){
  stepIndex++;
- if(stepIndex<steps.length)steps[stepIndex]();
+ if(stepIndex<steps.length){
+   steps[stepIndex]();
+ }
  else if(stepIndex>=100){
-  let i=stepIndex-100;
-  if(i<stepsPrivate.length)stepsPrivate[i]();
+   let i=stepIndex-100;
+   if(i<privateSteps.length) privateSteps[i]();
  }
 }
 
 /* ===== שמירה ===== */
 function save(){
  let prefix = total>1 ? `${current}. ` : "";
- let line=prefix;
+ let line = prefix;
 
  if(data.policyAction==="לבטל"){
-  line+=`${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber} – תבוטל`;
+   line+=`${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber} – תבוטל`;
  }
  else if(data.policyAction==="להשאיר"){
-  line+=`${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber} – תישאר`;
+   line+=`${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber} – תישאר`;
  }
  else{
-  line+=`תופק פוליסה חדשה של ${data.policyType} בחברת ${data.company} בפרמיה חודשית של ${data.monthlyPremium} ₪`;
+   line+=`תופק פוליסה חדשה של ${data.policyType} בחברת ${data.company} בפרמיה חודשית של ${data.monthlyPremium} ₪`;
  }
 
  results.push(line);
 
  if(current<total){
-  current++; data={}; stepIndex=1; steps[1]();
+   current++;
+   data={};
+   stepIndex=1;
+   steps[1]();
+ } else {
+   finish();
  }
- else finish();
 }
 
+/* ===== סיום ===== */
 function finish(){
  output.textContent=
 `בהמשך לשיחתנו
 סוכם על הדברים הבאים:
 
 ${results.join("\n")}`;
- step.style.display=nextBtn.style.display="none";
- output.style.display=copyBtn.style.display=resetBtn.style.display="block";
+ step.style.display="none";
+ nextBtn.style.display="none";
+ output.style.display="block";
+ copyBtn.style.display="block";
+ resetBtn.style.display="block";
+
  copyBtn.onclick=()=>navigator.clipboard.writeText(output.textContent);
  resetBtn.onclick=()=>location.reload();
 }
 
+/* ===== התחלה ===== */
 steps[0]();
 </script>
 
