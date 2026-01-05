@@ -27,39 +27,19 @@ pre{background:#eee;padding:10px;white-space:pre-wrap}
 <script>
 /* ===== נתונים ===== */
 
-// חברות חיסכון
-const investmentCompanies=[
- "הראל","מגדל","הפניקס","כלל","אלטשולר","מיטב",
- "אנליסט","אינפיניטי","ילין לפידות","מור","מנורה",
- "קרן השתלמות לעובדי המדינה"
-];
-
-// חברות ביטוח בלבד
 const insuranceCompanies=[
  "מגדל","מנורה","הפניקס","הכשרה","ביטוח ישיר","כלל","איילון"
-];
-
-const fundTypes=[
- "קופת גמל","קרן השתלמות","קרן פנסיה",
- "קופת גמל להשקעה","פוליסת חיסכון"
 ];
 
 const privatePolicies=[
  "פוליסת משכנתא",
  "פוליסת חיים",
- "פוליסת חיים משועבד",
+ "פוליסת חיים משועבדת",
  "ביטוח בריאות",
  "ביטוח בריאות ומחלות קשות"
 ];
 
 const privateActions=["לבטל","להשאיר","להפיק חדש"];
-
-const tracks=[
- "מניות","Snp500","משולב סחיר","עוקב מדדים גמיש",
- "מניות סחיר","עוקב מדדי מניות"
-];
-
-const fees=["0.6%","0.7%","0.8%"];
 
 /* ===== מצב ===== */
 let total=0,current=1,stepIndex=0,data={},results=[];
@@ -68,70 +48,20 @@ let total=0,current=1,stepIndex=0,data={},results=[];
 const steps=[
 ()=>askInput("כמה פעולות צריך לרשום?","count",true),
 
-()=>askSelect("מה סוג הפעולה?","action",
- ["לנייד","להשאיר","פתיחת קופה","פרט"]
-),
+()=>askSelect("מה סוג הפעולה?","action",["פרט"]),
 
-/* ===== פרט ===== */
-()=>{ 
- if(data.action==="פרט") askSelect("מה סוג הפוליסה?","policyType",privatePolicies);
- else next();
-},
+()=>askSelect("מה סוג הפוליסה?","policyType",privatePolicies),
+
+()=>askSelect("מה לבצע בפוליסה?","policyAction",privateActions),
+
+()=>askSelect("מה שם חברת הביטוח?","company",insuranceCompanies),
 
 ()=>{ 
- if(data.action==="פרט") askSelect("מה לבצע בפוליסה?","policyAction",privateActions);
- else next();
-},
-
-()=>{ 
- if(data.action==="פרט") askSelect("מה שם חברת הביטוח?","company",insuranceCompanies);
- else next();
-},
-
-()=>{ 
- if(data.action==="פרט" && data.policyAction!=="להפיק חדש")
+ if(data.policyAction!=="להפיק חדש")
    askInput("מה מספר הפוליסה?","policyNumber",false,true);
- else if(data.action==="פרט" && data.policyAction==="להפיק חדש")
+ else
    askInput("מה הפרמיה החודשית?","monthlyPremium",false,true);
- else next();
-},
-
-/* ===== חיסכון ===== */
-()=>{ if(data.action!=="פרט") askSelect("מה סוג המוצר?","fundType",fundTypes); else next(); },
-
-()=>{ if(data.action!=="פרט") askSelect("מה שם החברה?","company",investmentCompanies); else next(); },
-
-()=>{ if(data.action!=="פרט" && data.action!=="פתיחת קופה") askInput("מה מספר הקופה?","fundNumber"); else next(); },
-
-()=>{ 
- if(data.action==="לנייד") askSelect("לאיזו חברה לנייד?","targetCompany",investmentCompanies);
- else if(data.action==="להשאיר") askSelect("האם הולך להיות שינוי?","hasChange",["כן","לא"]);
- else next();
-},
-
-()=>{ 
- if(data.action==="לנייד") askSelect("מסלול השקעה","investment",tracks);
- else if(data.hasChange==="כן") askSelect("סוג שינוי","changeType",["שינוי מסלול השקעה","מינוי סוכן"]);
- else next();
-},
-
-()=>{ 
- if(data.action==="לנייד") askSelect("מה דמי הניהול?","fees",fees,true);
- else if(data.changeType==="שינוי מסלול השקעה") askSelect("מה המסלול הנוכחי?","currentInvestment",tracks);
- else next();
-},
-
-()=>{ 
- if(data.changeType==="שינוי מסלול השקעה") askSelect("לאיזה מסלול יעבור?","futureInvestment",tracks);
- else next();
-},
-
-()=>{ 
- if(data.action==="פתיחת קופה") askSelect("מסלול השקעה","investment",tracks);
- else next();
-},
-
-()=>{ if(data.action!=="פרט") askSelect("מה דמי הניהול?","fees",fees,true); }
+}
 ];
 
 /* ===== פונקציות ===== */
@@ -150,14 +80,11 @@ function askInput(label,key,isFirst=false,autoSave=false){
  };
 }
 
-function askSelect(label,key,options,autoSave=false){
+function askSelect(label,key,options){
  updateTitle();
  step.innerHTML=`<label>${label}</label>
  <select id="value">${options.map(o=>`<option>${o}</option>`).join("")}</select>`;
- nextBtn.onclick=()=>{
-  data[key]=value.value;
-  autoSave?save():next();
- };
+ nextBtn.onclick=()=>{ data[key]=value.value; next(); };
 }
 
 function next(){ stepIndex++; if(stepIndex<steps.length)steps[stepIndex](); }
@@ -167,27 +94,14 @@ function save(){
  let prefix = total>1 ? `${current}. ` : "";
  let line=prefix;
 
- if(data.action==="פרט"){
-  line+=`${data.policyType} בחברת ${data.company}`;
-  if(data.policyAction==="לבטל"){
-    line+=` מספר פוליסה ${data.policyNumber} – תבוטל`;
-  } else if(data.policyAction==="להשאיר"){
-    line+=` מספר פוליסה ${data.policyNumber} – תישאר`;
-  } else {
-    line+=` – להפיק חדש עם פרמיה חודשית בסכום של ${data.monthlyPremium} ₪`;
-  }
+ if(data.policyAction==="לבטל"){
+  line+=`${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber} – תבוטל`;
  }
- else if(data.action==="פתיחת קופה"){
-  line+=`פתיחת ${data.fundType} בחברת ${data.company} כאשר הכסף יושקע במסלול השקעה ${data.investment} בדמי ניהול ${data.fees}`;
- }
- else if(data.action==="לנייד"){
-  line+=`${data.company} ${data.fundType} מספר קופה ${data.fundNumber}- תנויד לחברת ${data.targetCompany} כאשר הכסף יושקע במסלול השקעה ${data.investment} בדמי ניהול ${data.fees}`;
+ else if(data.policyAction==="להשאיר"){
+  line+=`${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber} – תישאר`;
  }
  else{
-  line+=`${data.company} ${data.fundType} מספר קופה ${data.fundNumber}`;
-  if(data.hasChange==="לא") line+=" – תישאר ללא שינוי";
-  else if(data.changeType==="מינוי סוכן") line+=" – תישאר באותה חברה עם מינוי סוכן";
-  else line+=` – תישאר באותה חברה כאשר יתבצע שינוי מסלול מ${data.currentInvestment} ל${data.futureInvestment}`;
+  line+=`תופק פוליסה חדשה של ${data.policyType} בחברת ${data.company} בפרמיה חודשית של ${data.monthlyPremium} ₪`;
  }
 
  results.push(line);
