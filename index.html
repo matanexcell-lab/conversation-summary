@@ -112,7 +112,7 @@ function askInput(label,key,isFirst=false,done){
   };
 }
 
-// select רגיל (בלי "אחר") – משתמשים בו רק לדברים לוגיים (פעולות, שכיר/עצמאי וכו')
+// select רגיל (בלי "אחר") – לדברים לוגיים
 function askSelect(label,key,options,done){
   updateTitle();
   step.innerHTML = `<label>${label}</label>
@@ -125,7 +125,7 @@ function askSelect(label,key,options,done){
   };
 }
 
-// select עם "אחר" + מלל חופשי – לדברים תוכניים: חברות, מסלול, דמי ניהול, סוג מוצר, פוליסה וכו'
+// select עם "אחר" + מלל חופשי – לדברים תוכניים
 function askSelectWithOther(label,key,options,done){
   updateTitle();
   const allOptions = options.concat(["אחר"]);
@@ -167,7 +167,6 @@ function askSelectWithOther(label,key,options,done){
 /* ========= זרימה ========= */
 
 function chooseAction(){
-  // כאן לא שמים "אחר" כי זו בחירה לוגית
   askSelect("מה סוג הפעולה?","action",ACTIONS,()=>{
     buildFlow();
     nextInFlow();
@@ -305,7 +304,6 @@ function askFees(done){
     askSelectWithOther(label,"fees",FUND_FEES,done);
   }
   else{
-    // גיבוי – רק "אחר"
     askSelectWithOther(label,"fees",[],done);
   }
 }
@@ -318,9 +316,20 @@ function normalizeTrack(t){
   return t;
 }
 
-function empText(){
+// טקסט אמצע – ליד סוג הקופה
+function empMidText(){
   if(data.empStatus==="שכירה") return ` שכירה תחת המעסיק ${data.employer}`;
-  if(data.empStatus==="עצמאית") return ` עצמאית עם הפקדה ${data.selfAmount}`;
+  if(data.empStatus==="עצמאית") return ` עצמאית`;
+  return "";
+}
+
+// טקסט סוף – רק לעצמאית, בסוף המשפט (לא בגמל להשקעה, שיש לו כבר הוראת קבע/חד-פעמי)
+function empEndText(){
+  if(data.empStatus==="עצמאית" && data.fundType!=="קופת גמל להשקעה"){
+    const amt = (data.selfAmount || "").trim();
+    if(!amt) return "";
+    return ` עם הפקדה של ${amt} ₪ בחודש`;
+  }
   return "";
 }
 
@@ -330,22 +339,27 @@ function save(){
   let prefix = total>1 ? `${current}. ` : "";
   let line = prefix;
 
+  /* --- ניוד --- */
   if(data.action==="ניוד"){
-    line += `${data.company} ${data.fundType}${empText()} מספר קופה ${data.fundNumber}- תנויד לחברת ${data.targetCompany} כאשר הכסף יושקע במסלול השקעה ${normalizeTrack(data.investment)} בדמי ניהול ${data.fees}`;
+    line += `${data.company} ${data.fundType}${empMidText()} מספר קופה ${data.fundNumber}- תנויד לחברת ${data.targetCompany} כאשר הכסף יושקע במסלול השקעה ${normalizeTrack(data.investment)} בדמי ניהול ${data.fees}`;
+    line += empEndText();
   }
 
+  /* --- השארה --- */
   if(data.action==="השארה"){
     if(data.stayAction==="ללא שינוי"){
-      line += `${data.company} ${data.fundType}${empText()} מספר קופה ${data.fundNumber} – תישאר ללא שינוי`;
+      line += `${data.company} ${data.fundType}${empMidText()} מספר קופה ${data.fundNumber} – תישאר ללא שינוי`;
     } else if(data.stayAction==="מינוי סוכן"){
-      line += `${data.company} ${data.fundType}${empText()} מספר קופה ${data.fundNumber} – מינוי סוכן`;
+      line += `${data.company} ${data.fundType}${empMidText()} מספר קופה ${data.fundNumber} – מינוי סוכן`;
     } else {
-      line += `${data.company} ${data.fundType}${empText()} מספר קופה ${data.fundNumber} – תישאר באותה חברה כאשר יתבצע שינוי מסלול מ${normalizeTrack(data.currentInvestment)} ל${normalizeTrack(data.futureInvestment)}`;
+      line += `${data.company} ${data.fundType}${empMidText()} מספר קופה ${data.fundNumber} – תישאר באותה חברה כאשר יתבצע שינוי מסלול מ${normalizeTrack(data.currentInvestment)} ל${normalizeTrack(data.futureInvestment)}`;
     }
+    line += empEndText();
   }
 
+  /* --- פתיחת קופה --- */
   if(data.action==="פתיחת קופה"){
-    line += `פתיחת ${data.fundType}${empText()} בחברת ${data.company} כאשר הכסף יושקע במסלול השקעה ${normalizeTrack(data.investment)} בדמי ניהול ${data.fees}`;
+    line += `פתיחת ${data.fundType}${empMidText()} בחברת ${data.company} כאשר הכסף יושקע במסלול השקעה ${normalizeTrack(data.investment)} בדמי ניהול ${data.fees}`;
 
     if(data.fundType==="קופת גמל להשקעה" && data.kgiPayType && data.kgiPayType!=="אין"){
       const amt = (data.kgiAmount || "").trim();
@@ -354,9 +368,12 @@ function save(){
       } else if(data.kgiPayType==="העברה חד פעמית"){
         line += ` עם העברה חד פעמית בסכום של ${amt} ₪`;
       }
+    } else {
+      line += empEndText();
     }
   }
 
+  /* --- פרט --- */
   if(data.action==="פרט"){
     if(data.policyAction==="מינוי סוכן"){
       line += `${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber} – מינוי סוכן`;
@@ -365,7 +382,7 @@ function save(){
     } else if(data.policyAction==="להשאיר"){
       line += `${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber} – תישאר`;
     } else {
-      line += `תופק פוליסה חדשה של ${data.policyType} בחברת ${data.company} בפרמיה חודשית של ${data.monthlyMonthly} ₪`;
+      line += `תופק פוליסה חדשה של ${data.policyType} בחברת ${data.company} בפרמיה חודשית של ${data.monthlyPremium} ₪`;
     }
   }
 
@@ -374,6 +391,8 @@ function save(){
   if(current < total){
     current++;
     data={};
+    flow=[];
+    flowIndex=0;
     chooseAction();
   } else {
     finish();
