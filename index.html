@@ -112,6 +112,7 @@ function askInput(label,key,isFirst=false,done){
   };
 }
 
+// select רגיל (בלי "אחר") – משתמשים בו רק לדברים לוגיים (פעולות, שכיר/עצמאי וכו')
 function askSelect(label,key,options,done){
   updateTitle();
   step.innerHTML = `<label>${label}</label>
@@ -124,7 +125,7 @@ function askSelect(label,key,options,done){
   };
 }
 
-// select עם "אחר" + מלל חופשי
+// select עם "אחר" + מלל חופשי – לדברים תוכניים: חברות, מסלול, דמי ניהול, סוג מוצר, פוליסה וכו'
 function askSelectWithOther(label,key,options,done){
   updateTitle();
   const allOptions = options.concat(["אחר"]);
@@ -141,7 +142,7 @@ function askSelectWithOther(label,key,options,done){
   function refreshOther(){
     if(sel.value === "אחר"){
       otherBox.style.display = "block";
-      otherBox.innerHTML = `<label>דמי ניהול (מלל חופשי)</label><input id="otherValue">`;
+      otherBox.innerHTML = `<label>מלל חופשי</label><input id="otherValue">`;
     }else{
       otherBox.style.display = "none";
       otherBox.innerHTML = "";
@@ -154,7 +155,7 @@ function askSelectWithOther(label,key,options,done){
     if(sel.value === "אחר"){
       const ov = document.getElementById("otherValue");
       const val = (ov?.value || "").trim();
-      if(!val) return alert("יש למלא דמי ניהול");
+      if(!val) return alert("יש למלא מלל");
       data[key]=val;
     }else{
       data[key]=sel.value;
@@ -166,6 +167,7 @@ function askSelectWithOther(label,key,options,done){
 /* ========= זרימה ========= */
 
 function chooseAction(){
+  // כאן לא שמים "אחר" כי זו בחירה לוגית
   askSelect("מה סוג הפעולה?","action",ACTIONS,()=>{
     buildFlow();
     nextInFlow();
@@ -184,8 +186,8 @@ function buildFlow(){
   /* ---- ניוד ---- */
   if(data.action==="ניוד"){
     flow=[
-      ()=>askSelect("מה שם החברה הנוכחית?","company",INVESTMENT_COMPANIES),
-      ()=>askSelect("מה סוג הקופה?","fundType",FUND_TYPES),
+      ()=>askSelectWithOther("מה שם החברה הנוכחית?","company",INVESTMENT_COMPANIES),
+      ()=>askSelectWithOther("מה סוג הקופה?","fundType",FUND_TYPES),
       ()=>{
         if(["קרן פנסיה","קרן השתלמות","קופת גמל"].includes(data.fundType)){
           askSelect("האם שכירה / עצמאית / כלום?","empStatus",EMP_STATUS);
@@ -199,8 +201,8 @@ function buildFlow(){
         } else nextInFlow();
       },
       ()=>askInput("מה מספר הקופה?","fundNumber"),
-      ()=>askSelect("לאיזו חברה לנייד?","targetCompany",INVESTMENT_COMPANIES),
-      ()=>askSelect("מה מסלול ההשקעה?","investment",TRACKS),
+      ()=>askSelectWithOther("לאיזו חברה לנייד?","targetCompany",INVESTMENT_COMPANIES),
+      ()=>askSelectWithOther("מה מסלול ההשקעה?","investment",TRACKS),
       ()=>askFees(save)   // דמי ניהול לפי סוג המוצר
     ];
   }
@@ -208,8 +210,8 @@ function buildFlow(){
   /* ---- השארה ---- */
   if(data.action==="השארה"){
     flow=[
-      ()=>askSelect("מה שם החברה?","company",INVESTMENT_COMPANIES),
-      ()=>askSelect("מה סוג הקופה?","fundType",FUND_TYPES),
+      ()=>askSelectWithOther("מה שם החברה?","company",INVESTMENT_COMPANIES),
+      ()=>askSelectWithOther("מה סוג הקופה?","fundType",FUND_TYPES),
       ()=>{
         if(["קרן פנסיה","קרן השתלמות","קופת גמל"].includes(data.fundType)){
           askSelect("האם שכירה / עצמאית / כלום?","empStatus",EMP_STATUS);
@@ -227,15 +229,15 @@ function buildFlow(){
         if(data.stayAction==="שינוי מסלול השקעה") nextInFlow();
         else save();
       }),
-      ()=>askSelect("מה המסלול הנוכחי?","currentInvestment",TRACKS),
-      ()=>askSelect("לאיזה מסלול יעבור?","futureInvestment",TRACKS,save)
+      ()=>askSelectWithOther("מה המסלול הנוכחי?","currentInvestment",TRACKS),
+      ()=>askSelectWithOther("לאיזה מסלול יעבור?","futureInvestment",TRACKS,save)
     ];
   }
 
   /* ---- פתיחת קופה ---- */
   if(data.action==="פתיחת קופה"){
     flow=[
-      ()=>askSelect("מה סוג המוצר?","fundType",FUND_TYPES),
+      ()=>askSelectWithOther("מה סוג המוצר?","fundType",FUND_TYPES),
       ()=>{
         if(["קרן פנסיה","קרן השתלמות","קופת גמל"].includes(data.fundType)){
           askSelect("האם שכירה / עצמאית / כלום?","empStatus",EMP_STATUS);
@@ -248,10 +250,9 @@ function buildFlow(){
           askInput("כמה להפקיד?","selfAmount");
         } else nextInFlow();
       },
-      ()=>askSelect("מה שם החברה?","company",INVESTMENT_COMPANIES),
-      ()=>askSelect("מה מסלול ההשקעה?","investment",TRACKS),
+      ()=>askSelectWithOther("מה שם החברה?","company",INVESTMENT_COMPANIES),
+      ()=>askSelectWithOther("מה מסלול ההשקעה?","investment",TRACKS),
       ()=>askFees(()=>{
-        // אם קופת גמל להשקעה – ממשיכים לשאלת הוראת קבע/חד פעמי, אחרת שומרים מיד
         if(data.fundType==="קופת גמל להשקעה"){
           nextInFlow();
         } else {
@@ -270,7 +271,6 @@ function buildFlow(){
             }
           });
         } else {
-          // לא אמור להגיע לפה אם לא קופת גמל להשקעה, אבל ליתר ביטחון:
           save();
         }
       }
@@ -280,9 +280,9 @@ function buildFlow(){
   /* ---- פרט ---- */
   if(data.action==="פרט"){
     flow=[
-      ()=>askSelect("מה סוג הפוליסה?","policyType",PRIVATE_POLICIES),
+      ()=>askSelectWithOther("מה סוג הפוליסה?","policyType",PRIVATE_POLICIES),
       ()=>askSelect("מה לבצע בפוליסה?","policyAction",PRIVATE_ACTIONS),
-      ()=>askSelect("מה שם חברת הביטוח?","company",INSURANCE_COMPANIES),
+      ()=>askSelectWithOther("מה שם חברת הביטוח?","company",INSURANCE_COMPANIES),
       ()=>{
         if(data.policyAction==="להפיק חדש"){
           askInput("מה הפרמיה החודשית?","monthlyPremium",false,save);
@@ -298,11 +298,9 @@ function buildFlow(){
 
 function askFees(done){
   let label = "מה דמי הניהול?";
-  // פנסיה
   if(data.fundType === "קרן פנסיה"){
     askSelectWithOther(label,"fees",PENSION_FEES,done);
   }
-  // קרן השתלמות / גמל / גמל להשקעה / פוליסת חיסכון
   else if(["קרן השתלמות","קופת גמל","קופת גמל להשקעה","פוליסת חיסכון"].includes(data.fundType)){
     askSelectWithOther(label,"fees",FUND_FEES,done);
   }
@@ -322,7 +320,7 @@ function normalizeTrack(t){
 
 function empText(){
   if(data.empStatus==="שכירה") return ` שכירה תחת המעסיק ${data.employer}`;
-  if(data.empStatus==="עצמאית") return ` עצמאית בהפקדה ${data.selfAmount}`;
+  if(data.empStatus==="עצמאית") return ` עצמאית עם הפקדה ${data.selfAmount}`;
   return "";
 }
 
@@ -367,7 +365,7 @@ function save(){
     } else if(data.policyAction==="להשאיר"){
       line += `${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber} – תישאר`;
     } else {
-      line += `תופק פוליסה חדשה של ${data.policyType} בחברת ${data.company} בפרמיה חודשית של ${data.monthlyPremium} ₪`;
+      line += `תופק פוליסה חדשה של ${data.policyType} בחברת ${data.company} בפרמיה חודשית של ${data.monthlyMonthly} ₪`;
     }
   }
 
