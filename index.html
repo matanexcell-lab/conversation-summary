@@ -2,31 +2,88 @@
 <html lang="he">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>סיכום שיחה</title>
 <style>
-body{direction:rtl;font-family:Arial;background:#f5f5f5;padding:20px}
-.box{background:#fff;max-width:900px;margin:auto;padding:20px;border-radius:10px}
+body{
+  direction:rtl;
+  font-family:Arial, sans-serif;
+  background:#f5f5f5;
+  padding:20px;
+}
+.box{
+  background:#fff;
+  max-width:900px;
+  margin:auto;
+  padding:20px;
+  border-radius:10px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.08);
+}
+h2{margin-top:0;margin-bottom:16px;}
 label{font-weight:bold;display:block;margin-bottom:6px}
-input,select,button{width:100%;padding:10px;font-size:16px;margin-bottom:12px;box-sizing:border-box}
-button{cursor:pointer}
-pre{background:#eee;padding:12px;white-space:pre-wrap;border-radius:8px}
-.secondary{background:#eee}
-.btn-row{display:flex;gap:8px;justify-content:flex-start}
-.btn-row button{flex:0 0 auto}
+#step{
+  max-width:420px;
+  margin:0 auto 10px;
+}
+input,select{
+  width:100%;
+  padding:10px;
+  font-size:16px;
+  margin-bottom:12px;
+  box-sizing:border-box;
+}
+button{
+  cursor:pointer;
+  font-size:15px;
+  padding:8px 14px;
+  margin-bottom:0;
+  width:auto;
+  border-radius:8px;
+  border:1px solid #ccc;
+  background:#fafafa;
+}
+button.primary{
+  background:#1976d2;
+  border-color:#1976d2;
+  color:#fff;
+}
+button.secondary{
+  background:#eee;
+}
+.btn-row{
+  max-width:420px;
+  margin:4px auto 0;
+  display:flex;
+  gap:8px;
+  justify-content:flex-start;
+}
+pre{
+  background:#eee;
+  padding:12px;
+  white-space:pre-wrap;
+  border-radius:8px;
+  max-height:60vh;
+  overflow:auto;
+}
+#copyBtn,#resetBtn{
+  margin-top:8px;
+}
 </style>
 </head>
 <body>
 
 <div class="box">
   <h2 id="title">סיכום שיחה</h2>
+
   <div id="step"></div>
+
   <div class="btn-row">
     <button id="backBtn" class="secondary" style="display:none">חזרה</button>
-    <button id="nextBtn">המשך</button>
+    <button id="nextBtn" class="primary">המשך</button>
   </div>
 
   <pre id="output" style="display:none"></pre>
-  <button id="copyBtn" style="display:none">📋 העתק</button>
+  <button id="copyBtn" style="display:none" class="primary">📋 העתק</button>
   <button id="resetBtn" class="secondary" style="display:none">🔁 סיום</button>
 </div>
 
@@ -134,10 +191,9 @@ function setupBackButton(enableForFlowStep){
 
 /* ========= שדות קלט ========= */
 
-// קלט רגיל (חובה, חוץ מ-isFirst)
+// קלט רגיל
 function askInput(label,key,isFirst=false,done){
   updateTitle();
-  // אם אנחנו בשלב בתוך זרימה – לאפשר חזרה
   const inFlow = (flow && flow.length>0);
   setupBackButton(inFlow);
 
@@ -161,10 +217,9 @@ function askInput(label,key,isFirst=false,done){
   };
 }
 
-// קלט לא חובה (לסיבות בהמלצות)
+// קלט אופציונלי (סיבות להמלצה)
 function askOptionalInput(label,done){
   updateTitle();
-  // סיבות להמלצה – גם הן אחרי פעולה, לא חלק מה-flow, אז אין חזרה פה
   setupBackButton(false);
 
   step.innerHTML = `<label>${label}</label><input id="value">`;
@@ -174,7 +229,7 @@ function askOptionalInput(label,done){
   };
 }
 
-// select לוגי (בלי "אחר")
+// select רגיל
 function askSelect(label,key,options,done){
   updateTitle();
   const inFlow = (flow && flow.length>0);
@@ -191,7 +246,7 @@ function askSelect(label,key,options,done){
   };
 }
 
-// select עם "אחר" + מלל חופשי
+// select עם "אחר"
 function askSelectWithOther(label,key,options,done){
   updateTitle();
   const inFlow = (flow && flow.length>0);
@@ -199,7 +254,6 @@ function askSelectWithOther(label,key,options,done){
 
   const prevVal = data[key] || "";
   const allOptions = options.concat(["אחר"]);
-  // אם הערך הקודם לא ברשימה → "אחר" והערך בשדה טקסט
   let selectInitial = allOptions.includes(prevVal) ? prevVal : "אחר";
   let otherInitial = allOptions.includes(prevVal) ? "" : (prevVal || "");
 
@@ -397,14 +451,12 @@ function normalizeTrack(t){
   return t;
 }
 
-// טקסט אמצעי – שכירה / עצמאית
 function empTextMiddle(){
   if(data.empStatus==="שכירה") return ` שכירה תחת המעסיק ${data.employer}`;
   if(data.empStatus==="עצמאית") return ` עצמאית`;
   return "";
 }
 
-// טקסט סוף – הפקדה חודשית לעצמאי
 function selfDepositSuffix(){
   if(data.empStatus==="עצמאית" && data.selfAmount){
     return ` עם הפקדה חודשית של ${data.selfAmount} ₪`;
@@ -412,12 +464,10 @@ function selfDepositSuffix(){
   return "";
 }
 
-// האם סוג הפוליסה דורש סכום ביטוח
 function needInsuranceSum(){
   return ["פוליסת חיים","ביטוח בריאות","ביטוח בריאות ומחלות קשות"].includes(data.policyType);
 }
 
-// טקסט סכום ביטוח
 function insuranceSumText(){
   if(needInsuranceSum() && data.insuranceSum){
     return ` בסכום ביטוח של ${data.insuranceSum} ₪`;
@@ -425,7 +475,6 @@ function insuranceSumText(){
   return "";
 }
 
-// מעבר לפעולה הבאה / סיום
 function advanceToNextAction(){
   if(current < total){
     current++;
@@ -496,7 +545,7 @@ function save(){
     }
   }
 
-  // אם מצב "המלצות" – לשאול סיבות עבור ההמלצה הזו (לא חובה)
+  // אם מצב "המלצות" – סיבות להמלצה זו
   if(summaryMode === "המלצות"){
     askOptionalInput("רשום את הסיבות להמלצה זו (אם אין, אפשר להשאיר ריק ולהמשיך)", (reason)=>{
       let finalLine = line;
@@ -507,7 +556,6 @@ function save(){
       advanceToNextAction();
     });
   } else {
-    // סיכום רגיל – בלי סיבות
     results.push(line);
     advanceToNextAction();
   }
