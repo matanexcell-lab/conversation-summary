@@ -11,6 +11,8 @@ input,select,button{width:100%;padding:10px;font-size:16px;margin-bottom:12px;bo
 button{cursor:pointer}
 pre{background:#eee;padding:12px;white-space:pre-wrap;border-radius:8px}
 .secondary{background:#eee}
+.btn-row{display:flex;gap:8px;justify-content:flex-start}
+.btn-row button{flex:0 0 auto}
 </style>
 </head>
 <body>
@@ -18,7 +20,10 @@ pre{background:#eee;padding:12px;white-space:pre-wrap;border-radius:8px}
 <div class="box">
   <h2 id="title">סיכום שיחה</h2>
   <div id="step"></div>
-  <button id="nextBtn">המשך</button>
+  <div class="btn-row">
+    <button id="backBtn" class="secondary" style="display:none">חזרה</button>
+    <button id="nextBtn">המשך</button>
+  </div>
 
   <pre id="output" style="display:none"></pre>
   <button id="copyBtn" style="display:none">📋 העתק</button>
@@ -87,6 +92,16 @@ let flowIndex = 0;
 // מצב – סיכום או המלצות
 let summaryMode = "סיכום";   // "סיכום" או "המלצות"
 
+/* ========= אלמנטים ========= */
+
+const step = document.getElementById("step");
+const title = document.getElementById("title");
+const nextBtn = document.getElementById("nextBtn");
+const backBtn = document.getElementById("backBtn");
+const output = document.getElementById("output");
+const copyBtn = document.getElementById("copyBtn");
+const resetBtn = document.getElementById("resetBtn");
+
 /* ========= התחלה ========= */
 
 // שאלה 1: סיכום או המלצות
@@ -96,19 +111,42 @@ askSelect("האם זה סיכום של הדברים או המלצות?","summary
   askInput("כמה פעולות צריך לרשום?","count",true);
 });
 
-/* ========= UI ========= */
+/* ========= UI בסיסי ========= */
 
 function updateTitle(){
   title.textContent = total>1 ? `פעולה ${current} מתוך ${total}` : "סיכום שיחה";
 }
 
+function setupBackButton(enableForFlowStep){
+  // enableForFlowStep – האם אנחנו בתוך צעד של flow
+  if(enableForFlowStep && flow && flow.length>0 && flowIndex>1){
+    backBtn.style.display = "inline-block";
+    backBtn.onclick = ()=>{
+      // חוזרים שלב אחד אחורה בזרימה
+      flowIndex = Math.max(0, flowIndex - 2);
+      nextInFlow();
+    };
+  } else {
+    backBtn.style.display = "none";
+    backBtn.onclick = null;
+  }
+}
+
+/* ========= שדות קלט ========= */
+
+// קלט רגיל (חובה, חוץ מ-isFirst)
 function askInput(label,key,isFirst=false,done){
   updateTitle();
-  step.innerHTML = `<label>${label}</label><input id="value">`;
+  // אם אנחנו בשלב בתוך זרימה – לאפשר חזרה
+  const inFlow = (flow && flow.length>0);
+  setupBackButton(inFlow);
+
+  const prev = data[key] || "";
+  step.innerHTML = `<label>${label}</label><input id="value" value="${prev}">`;
+
   nextBtn.onclick = ()=>{
     const v = value.value.trim();
     if(!v && !isFirst){
-      // בשאלות רגילות חייבים למלא
       return alert("יש למלא");
     }
     if(isFirst){
@@ -126,6 +164,9 @@ function askInput(label,key,isFirst=false,done){
 // קלט לא חובה (לסיבות בהמלצות)
 function askOptionalInput(label,done){
   updateTitle();
+  // סיבות להמלצה – גם הן אחרי פעולה, לא חלק מה-flow, אז אין חזרה פה
+  setupBackButton(false);
+
   step.innerHTML = `<label>${label}</label><input id="value">`;
   nextBtn.onclick = ()=>{
     const v = value.value.trim();
@@ -136,9 +177,13 @@ function askOptionalInput(label,done){
 // select לוגי (בלי "אחר")
 function askSelect(label,key,options,done){
   updateTitle();
+  const inFlow = (flow && flow.length>0);
+  setupBackButton(inFlow);
+
+  const prev = data[key] || options[0];
   step.innerHTML = `<label>${label}</label>
   <select id="value">
-    ${options.map(o=>`<option>${o}</option>`).join("")}
+    ${options.map(o=>`<option ${o===prev?'selected':''}>${o}</option>`).join("")}
   </select>`;
   nextBtn.onclick = ()=>{
     data[key]=value.value;
@@ -149,11 +194,19 @@ function askSelect(label,key,options,done){
 // select עם "אחר" + מלל חופשי
 function askSelectWithOther(label,key,options,done){
   updateTitle();
+  const inFlow = (flow && flow.length>0);
+  setupBackButton(inFlow);
+
+  const prevVal = data[key] || "";
   const allOptions = options.concat(["אחר"]);
+  // אם הערך הקודם לא ברשימה → "אחר" והערך בשדה טקסט
+  let selectInitial = allOptions.includes(prevVal) ? prevVal : "אחר";
+  let otherInitial = allOptions.includes(prevVal) ? "" : (prevVal || "");
+
   step.innerHTML = `
     <label>${label}</label>
     <select id="value">
-      ${allOptions.map(o=>`<option>${o}</option>`).join("")}
+      ${allOptions.map(o=>`<option ${o===selectInitial?'selected':''}>${o}</option>`).join("")}
     </select>
     <div id="otherBox" style="display:none"></div>
   `;
@@ -163,13 +216,13 @@ function askSelectWithOther(label,key,options,done){
   function refreshOther(){
     if(sel.value === "אחר"){
       otherBox.style.display = "block";
-      otherBox.innerHTML = `<label>מלל חופשי</label><input id="otherValue">`;
+      otherBox.innerHTML = `<label>מלל חופשי</label><input id="otherValue" value="${otherInitial}">`;
     }else{
       otherBox.style.display = "none";
       otherBox.innerHTML = "";
     }
   }
-  sel.onchange = refreshOther;
+  sel.onchange = ()=>{ otherInitial = ""; refreshOther(); };
   refreshOther();
 
   nextBtn.onclick = ()=>{
@@ -185,7 +238,7 @@ function askSelectWithOther(label,key,options,done){
   };
 }
 
-/* ========= זרימה ========= */
+/* ========= זרימת פעולה ========= */
 
 function chooseAction(){
   askSelect("מה סוג הפעולה?","action",ACTIONS,()=>{
@@ -372,7 +425,7 @@ function insuranceSumText(){
   return "";
 }
 
-// קידום לפעולה הבאה / סיום
+// מעבר לפעולה הבאה / סיום
 function advanceToNextAction(){
   if(current < total){
     current++;
@@ -475,6 +528,7 @@ function finish(){
 
   step.style.display="none";
   nextBtn.style.display="none";
+  backBtn.style.display="none";
   output.style.display="block";
   copyBtn.style.display="block";
   resetBtn.style.display="block";
