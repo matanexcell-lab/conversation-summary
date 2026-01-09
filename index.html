@@ -84,9 +84,18 @@ let results = [];
 let flow = [];
 let flowIndex = 0;
 
+// חדש: מצב – סיכום או המלצות + סיבות
+let summaryMode = "סיכום";   // "סיכום" או "המלצות"
+let reasonsText = "";
+
 /* ========= התחלה ========= */
 
-askInput("כמה פעולות צריך לרשום?","count",true);
+// שאלה 1: סיכום או המלצות
+askSelect("האם זה סיכום של הדברים או המלצות?","summaryModeChoice",["סיכום הדברים","המלצות"], ()=>{
+  summaryMode = (data.summaryModeChoice === "המלצות") ? "המלצות" : "סיכום";
+  // שאלה 2: כמה פעולות
+  askInput("כמה פעולות צריך לרשום?","count",true);
+});
 
 /* ========= UI ========= */
 
@@ -280,6 +289,14 @@ function buildFlow(){
   if(data.action==="פרט"){
     flow=[
       ()=>askSelectWithOther("מה סוג הפוליסה?","policyType",PRIVATE_POLICIES),
+      ()=>{
+        // אם זו פוליסה עם סכום ביטוח – לשאול
+        if(["פוליסת חיים","ביטוח בריאות","ביטוח בריאות ומחלות קשות"].includes(data.policyType)){
+          askInput("מהו סכום הביטוח?","insuranceSum",false,nextInFlow);
+        } else {
+          nextInFlow();
+        }
+      },
       ()=>askSelect("מה לבצע בפוליסה?","policyAction",PRIVATE_ACTIONS),
       ()=>askSelectWithOther("מה שם חברת הביטוח?","company",INSURANCE_COMPANIES),
       ()=>{
@@ -316,17 +333,30 @@ function normalizeTrack(t){
   return t;
 }
 
-// טקסט אמצעי – רק לשכירה או מילה "עצמאית" בלי סכום
+// טקסט אמצעי – שכירה / עצמאית
 function empTextMiddle(){
   if(data.empStatus==="שכירה") return ` שכירה תחת המעסיק ${data.employer}`;
   if(data.empStatus==="עצמאית") return ` עצמאית`;
   return "";
 }
 
-// טקסט סוף משפט – הפקדה עצמאית
+// טקסט סוף – הפקדה חודשית לעצמאי
 function selfDepositSuffix(){
   if(data.empStatus==="עצמאית" && data.selfAmount){
     return ` עם הפקדה חודשית של ${data.selfAmount} ₪`;
+  }
+  return "";
+}
+
+// האם סוג הפוליסה דורש סכום ביטוח
+function needInsuranceSum(){
+  return ["פוליסת חיים","ביטוח בריאות","ביטוח בריאות ומחלות קשות"].includes(data.policyType);
+}
+
+// טקסט סכום ביטוח
+function insuranceSumText(){
+  if(needInsuranceSum() && data.insuranceSum){
+    return ` בסכום ביטוח של ${data.insuranceSum} ₪`;
   }
   return "";
 }
@@ -377,12 +407,16 @@ function save(){
   if(data.action==="פרט"){
     if(data.policyAction==="מינוי סוכן"){
       line += `${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber}- יתבצע מינוי סוכן`;
+      line += insuranceSumText();
     } else if(data.policyAction==="לבטל"){
       line += `${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber}- תבוטל`;
+      line += insuranceSumText();
     } else if(data.policyAction==="להשאיר"){
       line += `${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber}- תישאר`;
+      line += insuranceSumText();
     } else {
       line += `תופק פוליסה חדשה של ${data.policyType} בחברת ${data.company} בפרמיה חודשית של ${data.monthlyPremium} ₪`;
+      line += insuranceSumText();
     }
   }
 
@@ -394,14 +428,35 @@ function save(){
     flow=[]; flowIndex=0;
     chooseAction();
   } else {
-    finish();
+    // אם זה "המלצות" – קודם לשאול סיבות
+    if(summaryMode === "המלצות" && !reasonsText){
+      askInput("רשום את כל הסיבות להמלצות","reasons",false, ()=>{
+        reasonsText = data.reasons || "";
+        finish();
+      });
+    } else {
+      finish();
+    }
   }
 }
 
 /* ========= סיום ========= */
 
 function finish(){
-  output.textContent = `בהמשך לשיחתנו\nסוכם על הדברים הבאים:\n\n${results.join("\n")}`;
+  let header;
+  if(summaryMode === "המלצות"){
+    header = `נאמרו ההמלצות הבאות:\n\n`;
+  } else {
+    header = `בהמשך לשיחתנו\nסוכם על הדברים הבאים:\n\n`;
+  }
+
+  let text = header + results.join("\n");
+
+  if(summaryMode === "המלצות" && reasonsText){
+    text += `\n\nהסיבות להמלצות:\n${reasonsText}`;
+  }
+
+  output.textContent = text;
   step.style.display="none";
   nextBtn.style.display="none";
   output.style.display="block";
