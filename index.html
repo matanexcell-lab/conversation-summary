@@ -84,9 +84,8 @@ let results = [];
 let flow = [];
 let flowIndex = 0;
 
-// חדש: מצב – סיכום או המלצות + סיבות
+// מצב – סיכום או המלצות
 let summaryMode = "סיכום";   // "סיכום" או "המלצות"
-let reasonsText = "";
 
 /* ========= התחלה ========= */
 
@@ -108,7 +107,10 @@ function askInput(label,key,isFirst=false,done){
   step.innerHTML = `<label>${label}</label><input id="value">`;
   nextBtn.onclick = ()=>{
     const v = value.value.trim();
-    if(!v) return alert("יש למלא");
+    if(!v && !isFirst){
+      // בשאלות רגילות חייבים למלא
+      return alert("יש למלא");
+    }
     if(isFirst){
       total = parseInt(v,10);
       if(!Number.isFinite(total) || total<=0) return alert("מספר לא תקין");
@@ -118,6 +120,16 @@ function askInput(label,key,isFirst=false,done){
     }
     data[key]=v;
     done ? done() : nextInFlow();
+  };
+}
+
+// קלט לא חובה (לסיבות בהמלצות)
+function askOptionalInput(label,done){
+  updateTitle();
+  step.innerHTML = `<label>${label}</label><input id="value">`;
+  nextBtn.onclick = ()=>{
+    const v = value.value.trim();
+    done(v);
   };
 }
 
@@ -290,7 +302,6 @@ function buildFlow(){
     flow=[
       ()=>askSelectWithOther("מה סוג הפוליסה?","policyType",PRIVATE_POLICIES),
       ()=>{
-        // אם זו פוליסה עם סכום ביטוח – לשאול
         if(["פוליסת חיים","ביטוח בריאות","ביטוח בריאות ומחלות קשות"].includes(data.policyType)){
           askInput("מהו סכום הביטוח?","insuranceSum",false,nextInFlow);
         } else {
@@ -361,6 +372,18 @@ function insuranceSumText(){
   return "";
 }
 
+// קידום לפעולה הבאה / סיום
+function advanceToNextAction(){
+  if(current < total){
+    current++;
+    data={};
+    flow=[]; flowIndex=0;
+    chooseAction();
+  } else {
+    finish();
+  }
+}
+
 /* ========= שמירה ========= */
 
 function save(){
@@ -420,23 +443,20 @@ function save(){
     }
   }
 
-  results.push(line);
-
-  if(current < total){
-    current++;
-    data={};
-    flow=[]; flowIndex=0;
-    chooseAction();
+  // אם מצב "המלצות" – לשאול סיבות עבור ההמלצה הזו (לא חובה)
+  if(summaryMode === "המלצות"){
+    askOptionalInput("רשום את הסיבות להמלצה זו (אם אין, אפשר להשאיר ריק ולהמשיך)", (reason)=>{
+      let finalLine = line;
+      if(reason){
+        finalLine += ` (סיבות: ${reason})`;
+      }
+      results.push(finalLine);
+      advanceToNextAction();
+    });
   } else {
-    // אם זה "המלצות" – קודם לשאול סיבות
-    if(summaryMode === "המלצות" && !reasonsText){
-      askInput("רשום את כל הסיבות להמלצות","reasons",false, ()=>{
-        reasonsText = data.reasons || "";
-        finish();
-      });
-    } else {
-      finish();
-    }
+    // סיכום רגיל – בלי סיבות
+    results.push(line);
+    advanceToNextAction();
   }
 }
 
@@ -451,12 +471,8 @@ function finish(){
   }
 
   let text = header + results.join("\n");
-
-  if(summaryMode === "המלצות" && reasonsText){
-    text += `\n\nהסיבות להמלצות:\n${reasonsText}`;
-  }
-
   output.textContent = text;
+
   step.style.display="none";
   nextBtn.style.display="none";
   output.style.display="block";
