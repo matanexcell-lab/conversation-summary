@@ -36,7 +36,7 @@ const INVESTMENT_COMPANIES = [
 ];
 
 const INSURANCE_COMPANIES = [
- "מגדל","מנורה","הפניקס","הכשרה","ביטוח ישיר","כלל","איילון"
+ "הראל","מגדל","מנורה","הפניקס","הכשרה","ביטוח ישיר","כלל","איילון"
 ];
 
 const FUND_TYPES = [
@@ -112,7 +112,7 @@ function askInput(label,key,isFirst=false,done){
   };
 }
 
-// select רגיל (בלי "אחר") – לדברים לוגיים
+// select לוגי (בלי "אחר")
 function askSelect(label,key,options,done){
   updateTitle();
   step.innerHTML = `<label>${label}</label>
@@ -125,7 +125,7 @@ function askSelect(label,key,options,done){
   };
 }
 
-// select עם "אחר" + מלל חופשי – לדברים תוכניים
+// select עם "אחר" + מלל חופשי
 function askSelectWithOther(label,key,options,done){
   updateTitle();
   const allOptions = options.concat(["אחר"]);
@@ -202,7 +202,7 @@ function buildFlow(){
       ()=>askInput("מה מספר הקופה?","fundNumber"),
       ()=>askSelectWithOther("לאיזו חברה לנייד?","targetCompany",INVESTMENT_COMPANIES),
       ()=>askSelectWithOther("מה מסלול ההשקעה?","investment",TRACKS),
-      ()=>askFees(save)   // דמי ניהול לפי סוג המוצר
+      ()=>askFees(save)
     ];
   }
 
@@ -293,10 +293,10 @@ function buildFlow(){
   }
 }
 
-/* ========= דמי ניהול לפי סוג ========= */
+/* ========= דמי ניהול ========= */
 
 function askFees(done){
-  let label = "מה דמי הניהול?";
+  const label = "מה דמי הניהול?";
   if(data.fundType === "קרן פנסיה"){
     askSelectWithOther(label,"fees",PENSION_FEES,done);
   }
@@ -316,19 +316,17 @@ function normalizeTrack(t){
   return t;
 }
 
-// טקסט אמצע – ליד סוג הקופה
-function empMidText(){
+// טקסט אמצעי – רק לשכירה או מילה "עצמאית" בלי סכום
+function empTextMiddle(){
   if(data.empStatus==="שכירה") return ` שכירה תחת המעסיק ${data.employer}`;
   if(data.empStatus==="עצמאית") return ` עצמאית`;
   return "";
 }
 
-// טקסט סוף – רק לעצמאית, בסוף המשפט (לא בגמל להשקעה, שיש לו כבר הוראת קבע/חד-פעמי)
-function empEndText(){
-  if(data.empStatus==="עצמאית" && data.fundType!=="קופת גמל להשקעה"){
-    const amt = (data.selfAmount || "").trim();
-    if(!amt) return "";
-    return ` עם הפקדה של ${amt} ₪ בחודש`;
+// טקסט סוף משפט – הפקדה עצמאית
+function selfDepositSuffix(){
+  if(data.empStatus==="עצמאית" && data.selfAmount){
+    return ` עם הפקדה חודשית של ${data.selfAmount} ₪`;
   }
   return "";
 }
@@ -339,27 +337,27 @@ function save(){
   let prefix = total>1 ? `${current}. ` : "";
   let line = prefix;
 
-  /* --- ניוד --- */
+  /* ---- ניוד ---- */
   if(data.action==="ניוד"){
-    line += `${data.company} ${data.fundType}${empMidText()} מספר קופה ${data.fundNumber}- תנויד לחברת ${data.targetCompany} כאשר הכסף יושקע במסלול השקעה ${normalizeTrack(data.investment)} בדמי ניהול ${data.fees}`;
-    line += empEndText();
+    line += `${data.company} ${data.fundType}${empTextMiddle()} מספר קופה ${data.fundNumber}- תנויד לחברת ${data.targetCompany} כאשר הכסף יושקע במסלול השקעה ${normalizeTrack(data.investment)} בדמי ניהול ${data.fees}`;
+    line += selfDepositSuffix();
   }
 
-  /* --- השארה --- */
+  /* ---- השארה ---- */
   if(data.action==="השארה"){
     if(data.stayAction==="ללא שינוי"){
-      line += `${data.company} ${data.fundType}${empMidText()} מספר קופה ${data.fundNumber} – תישאר ללא שינוי`;
+      line += `${data.company} ${data.fundType}${empTextMiddle()} מספר קופה ${data.fundNumber} – תישאר ללא שינוי`;
     } else if(data.stayAction==="מינוי סוכן"){
-      line += `${data.company} ${data.fundType}${empMidText()} מספר קופה ${data.fundNumber} – מינוי סוכן`;
+      line += `${data.company} ${data.fundType}${empTextMiddle()} מספר קופה ${data.fundNumber} – מינוי סוכן`;
     } else {
-      line += `${data.company} ${data.fundType}${empMidText()} מספר קופה ${data.fundNumber} – תישאר באותה חברה כאשר יתבצע שינוי מסלול מ${normalizeTrack(data.currentInvestment)} ל${normalizeTrack(data.futureInvestment)}`;
+      line += `${data.company} ${data.fundType}${empTextMiddle()} מספר קופה ${data.fundNumber} – תישאר באותה חברה כאשר יתבצע שינוי מסלול מ${normalizeTrack(data.currentInvestment)} ל${normalizeTrack(data.futureInvestment)}`;
     }
-    line += empEndText();
+    line += selfDepositSuffix();
   }
 
-  /* --- פתיחת קופה --- */
+  /* ---- פתיחת קופה ---- */
   if(data.action==="פתיחת קופה"){
-    line += `פתיחת ${data.fundType}${empMidText()} בחברת ${data.company} כאשר הכסף יושקע במסלול השקעה ${normalizeTrack(data.investment)} בדמי ניהול ${data.fees}`;
+    line += `פתיחת ${data.fundType}${empTextMiddle()} בחברת ${data.company} כאשר הכסף יושקע במסלול השקעה ${normalizeTrack(data.investment)} בדמי ניהול ${data.fees}`;
 
     if(data.fundType==="קופת גמל להשקעה" && data.kgiPayType && data.kgiPayType!=="אין"){
       const amt = (data.kgiAmount || "").trim();
@@ -368,19 +366,21 @@ function save(){
       } else if(data.kgiPayType==="העברה חד פעמית"){
         line += ` עם העברה חד פעמית בסכום של ${amt} ₪`;
       }
-    } else {
-      line += empEndText();
+    }
+
+    if(data.fundType!=="קופת גמל להשקעה"){
+      line += selfDepositSuffix();
     }
   }
 
-  /* --- פרט --- */
+  /* ---- פרט ---- */
   if(data.action==="פרט"){
     if(data.policyAction==="מינוי סוכן"){
-      line += `${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber} – מינוי סוכן`;
+      line += `${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber}- יתבצע מינוי סוכן`;
     } else if(data.policyAction==="לבטל"){
-      line += `${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber} – תבוטל`;
+      line += `${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber}- תבוטל`;
     } else if(data.policyAction==="להשאיר"){
-      line += `${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber} – תישאר`;
+      line += `${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber}- תישאר`;
     } else {
       line += `תופק פוליסה חדשה של ${data.policyType} בחברת ${data.company} בפרמיה חודשית של ${data.monthlyPremium} ₪`;
     }
@@ -391,8 +391,7 @@ function save(){
   if(current < total){
     current++;
     data={};
-    flow=[];
-    flowIndex=0;
+    flow=[]; flowIndex=0;
     chooseAction();
   } else {
     finish();
