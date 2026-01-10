@@ -84,7 +84,7 @@ pre{
 
   <pre id="output" style="display:none"></pre>
   <button id="copyBtn" style="display:none" class="primary">📋 העתק</button>
-  <button id="resetBtn" class="secondary" style="display:none">🔁 סיום</button>
+  <button id="resetBtn" class="secondary" style="display:none">סיום</button>
 </div>
 
 <script>
@@ -144,7 +144,8 @@ let current = 1;
 let data = {};
 let results = [];
 let flow = [];
-let flowIndex = 0;
+let flowIndex = 0;        // next step index
+let currentStepIndex = -1; // index של השאלה שמוצגת עכשיו
 
 // מצב – סיכום או המלצות
 let summaryMode = "סיכום";   // "סיכום" או "המלצות"
@@ -175,13 +176,14 @@ function updateTitle(){
 }
 
 function setupBackButton(enableForFlowStep){
-  // enableForFlowStep – האם אנחנו בתוך צעד של flow
-  if(enableForFlowStep && flow && flow.length>0 && flowIndex>1){
+  if(enableForFlowStep && flow && flow.length>0 && currentStepIndex > 0){
     backBtn.style.display = "inline-block";
     backBtn.onclick = ()=>{
-      // חוזרים שלב אחד אחורה בזרימה
-      flowIndex = Math.max(0, flowIndex - 2);
-      nextInFlow();
+      // מעבר לשאלה הקודמת בתוך אותה פעולה
+      const prevIndex = Math.max(0, currentStepIndex - 1);
+      currentStepIndex = prevIndex;
+      flowIndex = prevIndex + 1;
+      flow[prevIndex]();
     };
   } else {
     backBtn.style.display = "none";
@@ -191,7 +193,6 @@ function setupBackButton(enableForFlowStep){
 
 /* ========= שדות קלט ========= */
 
-// קלט רגיל
 function askInput(label,key,isFirst=false,done){
   updateTitle();
   const inFlow = (flow && flow.length>0);
@@ -229,7 +230,6 @@ function askOptionalInput(label,done){
   };
 }
 
-// select רגיל
 function askSelect(label,key,options,done){
   updateTitle();
   const inFlow = (flow && flow.length>0);
@@ -246,7 +246,6 @@ function askSelect(label,key,options,done){
   };
 }
 
-// select עם "אחר"
 function askSelectWithOther(label,key,options,done){
   updateTitle();
   const inFlow = (flow && flow.length>0);
@@ -303,12 +302,15 @@ function chooseAction(){
 
 function nextInFlow(){
   if(flowIndex < flow.length){
-    flow[flowIndex++]();
+    currentStepIndex = flowIndex;
+    const fn = flow[flowIndex];
+    flowIndex += 1;
+    fn();
   }
 }
 
 function buildFlow(){
-  flow=[]; flowIndex=0;
+  flow=[]; flowIndex=0; currentStepIndex=-1;
 
   /* ---- ניוד ---- */
   if(data.action==="ניוד"){
@@ -470,6 +472,7 @@ function needInsuranceSum(){
 
 function insuranceSumText(){
   if(needInsuranceSum() && data.insuranceSum){
+    // לחיים / וכד' – נשאר "בסכום ביטוח"
     return ` בסכום ביטוח של ${data.insuranceSum} ₪`;
   }
   return "";
@@ -479,7 +482,7 @@ function advanceToNextAction(){
   if(current < total){
     current++;
     data={};
-    flow=[]; flowIndex=0;
+    flow=[]; flowIndex=0; currentStepIndex=-1;
     chooseAction();
   } else {
     finish();
@@ -540,17 +543,24 @@ function save(){
       line += `${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber}- תישאר`;
       line += insuranceSumText();
     } else {
-      line += `תופק פוליסה חדשה של ${data.policyType} בחברת ${data.company} בפרמיה חודשית של ${data.monthlyPremium} ₪`;
-      line += insuranceSumText();
+      // הפקה חדשה
+      if (["ביטוח בריאות","ביטוח בריאות ומחלות קשות"].includes(data.policyType) && data.insuranceSum){
+        // *** התיקון שביקשת: פיצוי מיד אחרי סוג הכיסוי ***
+        line += `תופק פוליסה חדשה של ${data.policyType} עם פיצוי של ${data.insuranceSum} ₪ בחברת ${data.company} בפרמיה חודשית של ${data.monthlyPremium} ₪`;
+      } else {
+        // שאר הפוליסות (למשל חיים) – נשאר "בסכום ביטוח"
+        line += `תופק פוליסה חדשה של ${data.policyType} בחברת ${data.company} בפרמיה חודשית של ${data.monthlyPremium} ₪`;
+        line += insuranceSumText();
+      }
     }
   }
 
-  // אם מצב "המלצות" – סיבות להמלצה זו
+  // מצב "המלצות" – סיבה אחרי כל פעולה, בלי סוגריים
   if(summaryMode === "המלצות"){
     askOptionalInput("רשום את הסיבות להמלצה זו (אם אין, אפשר להשאיר ריק ולהמשיך)", (reason)=>{
       let finalLine = line;
       if(reason){
-        finalLine += ` (סיבות: ${reason})`;
+        finalLine += ` – הומלץ כך: ${reason}`;
       }
       results.push(finalLine);
       advanceToNextAction();
@@ -580,6 +590,7 @@ function finish(){
   output.style.display="block";
   copyBtn.style.display="block";
   resetBtn.style.display="block";
+
   copyBtn.onclick = ()=>navigator.clipboard.writeText(output.textContent);
   resetBtn.onclick = ()=>location.reload();
 }
