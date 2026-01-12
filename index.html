@@ -555,15 +555,22 @@ function askReasonsForRecommendation(baseLine){
     }
 
     let finalLine = baseLine;
+
+    // לוודא שיש נקודה בסוף משפט ההמלצה
+    const trimmed = finalLine.trim();
+    if(!trimmed.endsWith(".") && !trimmed.endsWith("!") && !trimmed.endsWith("?")){
+      finalLine += ".";
+    }
+
     if(reasons.length>0){
-      finalLine += " – להלן הסיבות להמלצה זאת: ";
+      finalLine += "\n\nלהלן הסיבות להמלצה זאת:\n";
       if(reasons.length===1){
-        finalLine += reasons[0];
+        finalLine += reasons[0] + "\n";
       } else {
-        const parts = reasons.map((r,i)=>`${lettersHeb[i]}. ${r}`);
-        finalLine += parts.join(" ");
+        finalLine += reasons.map((r,i)=>`${lettersHeb[i]}. ${r}`).join("\n") + "\n";
       }
     }
+
     results.push(finalLine);
     advanceToNextAction();
   };
