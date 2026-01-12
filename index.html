@@ -119,7 +119,7 @@ const TRACKS = [
 ];
 
 // דמי ניהול לפי סוג מוצר
-const FUND_FEES = ["0.6%","0.7%","0.8%"];  // השתלמות / גמל / גמל להשקעה / פוליסת חיסכון
+const FUND_FEES = ["0.6%","0.7%","0.8%"];
 const PENSION_FEES = [
  "0.1% מצבירה ועוד 1.5% מהפקדה",
  "0.15% מצבירה ועוד 1.5% מהפקדה"
@@ -133,7 +133,13 @@ const PRIVATE_POLICIES = [
  "ביטוח בריאות ומחלות קשות"
 ];
 
-const PRIVATE_ACTIONS = ["לבטל","להשאיר","להפיק חדש","מינוי סוכן"];
+const PRIVATE_ACTIONS = [
+ "לבטל",
+ "להשאיר",
+ "להפיק חדש",
+ "הפקה וביטול",
+ "מינוי סוכן"
+];
 
 const KGI_PAY_OPTIONS = ["אין","הוראת קבע","העברה חד פעמית"];
 
@@ -144,11 +150,13 @@ let current = 1;
 let data = {};
 let results = [];
 let flow = [];
-let flowIndex = 0;        // next step index
-let currentStepIndex = -1; // index של השאלה שמוצגת עכשיו
+let flowIndex = 0;
+let currentStepIndex = -1;
 
-// מצב – סיכום או המלצות
-let summaryMode = "סיכום";   // "סיכום" או "המלצות"
+// סיכום או המלצות
+let summaryMode = "סיכום";
+
+const lettersHeb = "אבגדהוזחטיכלמנסעפצקרשת".split("");
 
 /* ========= אלמנטים ========= */
 
@@ -162,27 +170,24 @@ const resetBtn = document.getElementById("resetBtn");
 
 /* ========= התחלה ========= */
 
-// שאלה 1: סיכום או המלצות
 askSelect("האם זה סיכום של הדברים או המלצות?","summaryModeChoice",["סיכום הדברים","המלצות"], ()=>{
   summaryMode = (data.summaryModeChoice === "המלצות") ? "המלצות" : "סיכום";
-  // שאלה 2: כמה פעולות
   askInput("כמה פעולות צריך לרשום?","count",true);
 });
 
-/* ========= UI בסיסי ========= */
+/* ========= UI ========= */
 
 function updateTitle(){
   title.textContent = total>1 ? `פעולה ${current} מתוך ${total}` : "סיכום שיחה";
 }
 
-function setupBackButton(enableForFlowStep){
-  if(enableForFlowStep && flow && flow.length>0 && currentStepIndex > 0){
+function setupBackButton(inFlow){
+  if(inFlow && flow && flow.length>0 && currentStepIndex>0){
     backBtn.style.display = "inline-block";
     backBtn.onclick = ()=>{
-      // מעבר לשאלה הקודמת בתוך אותה פעולה
-      const prevIndex = Math.max(0, currentStepIndex - 1);
+      const prevIndex = Math.max(0, currentStepIndex-1);
       currentStepIndex = prevIndex;
-      flowIndex = prevIndex + 1;
+      flowIndex = prevIndex+1;
       flow[prevIndex]();
     };
   } else {
@@ -191,7 +196,7 @@ function setupBackButton(enableForFlowStep){
   }
 }
 
-/* ========= שדות קלט ========= */
+/* ========= שדות ========= */
 
 function askInput(label,key,isFirst=false,done){
   updateTitle();
@@ -203,9 +208,6 @@ function askInput(label,key,isFirst=false,done){
 
   nextBtn.onclick = ()=>{
     const v = value.value.trim();
-    if(!v && !isFirst){
-      return alert("יש למלא");
-    }
     if(isFirst){
       total = parseInt(v,10);
       if(!Number.isFinite(total) || total<=0) return alert("מספר לא תקין");
@@ -213,20 +215,9 @@ function askInput(label,key,isFirst=false,done){
       chooseAction();
       return;
     }
+    if(!v) return alert("יש למלא");
     data[key]=v;
     done ? done() : nextInFlow();
-  };
-}
-
-// קלט אופציונלי (סיבות להמלצה)
-function askOptionalInput(label,done){
-  updateTitle();
-  setupBackButton(false);
-
-  step.innerHTML = `<label>${label}</label><input id="value">`;
-  nextBtn.onclick = ()=>{
-    const v = value.value.trim();
-    done(v);
   };
 }
 
@@ -252,14 +243,14 @@ function askSelectWithOther(label,key,options,done){
   setupBackButton(inFlow);
 
   const prevVal = data[key] || "";
-  const allOptions = options.concat(["אחר"]);
-  let selectInitial = allOptions.includes(prevVal) ? prevVal : "אחר";
-  let otherInitial = allOptions.includes(prevVal) ? "" : (prevVal || "");
+  const all = options.concat(["אחר"]);
+  let selectInit = all.includes(prevVal) ? prevVal : "אחר";
+  let otherInit = all.includes(prevVal) ? "" : (prevVal || "");
 
   step.innerHTML = `
     <label>${label}</label>
     <select id="value">
-      ${allOptions.map(o=>`<option ${o===selectInitial?'selected':''}>${o}</option>`).join("")}
+      ${all.map(o=>`<option ${o===selectInit?'selected':''}>${o}</option>`).join("")}
     </select>
     <div id="otherBox" style="display:none"></div>
   `;
@@ -267,23 +258,23 @@ function askSelectWithOther(label,key,options,done){
   const otherBox = document.getElementById("otherBox");
 
   function refreshOther(){
-    if(sel.value === "אחר"){
-      otherBox.style.display = "block";
-      otherBox.innerHTML = `<label>מלל חופשי</label><input id="otherValue" value="${otherInitial}">`;
-    }else{
-      otherBox.style.display = "none";
-      otherBox.innerHTML = "";
+    if(sel.value==="אחר"){
+      otherBox.style.display="block";
+      otherBox.innerHTML=`<label>מלל חופשי</label><input id="otherValue" value="${otherInit}">`;
+    } else {
+      otherBox.style.display="none";
+      otherBox.innerHTML="";
     }
   }
-  sel.onchange = ()=>{ otherInitial = ""; refreshOther(); };
+  sel.onchange = ()=>{ otherInit=""; refreshOther(); };
   refreshOther();
 
   nextBtn.onclick = ()=>{
-    if(sel.value === "אחר"){
+    if(sel.value==="אחר"){
       const ov = document.getElementById("otherValue");
-      const val = (ov?.value || "").trim();
-      if(!val) return alert("יש למלא מלל");
-      data[key]=val;
+      const v = (ov?.value || "").trim();
+      if(!v) return alert("יש למלא מלל חופשי");
+      data[key]=v;
     }else{
       data[key]=sel.value;
     }
@@ -291,7 +282,7 @@ function askSelectWithOther(label,key,options,done){
   };
 }
 
-/* ========= זרימת פעולה ========= */
+/* ========= זרימה ========= */
 
 function chooseAction(){
   askSelect("מה סוג הפעולה?","action",ACTIONS,()=>{
@@ -412,18 +403,44 @@ function buildFlow(){
       ()=>askSelectWithOther("מה סוג הפוליסה?","policyType",PRIVATE_POLICIES),
       ()=>{
         if(["פוליסת חיים","ביטוח בריאות","ביטוח בריאות ומחלות קשות"].includes(data.policyType)){
-          askInput("מהו סכום הביטוח?","insuranceSum",false,nextInFlow);
-        } else {
-          nextInFlow();
-        }
+          askInput("מהו סכום הביטוח?","insuranceSum");
+        } else nextInFlow();
       },
       ()=>askSelect("מה לבצע בפוליסה?","policyAction",PRIVATE_ACTIONS),
-      ()=>askSelectWithOther("מה שם חברת הביטוח?","company",INSURANCE_COMPANIES),
+      ()=>{
+        const lbl = (data.policyAction==="הפקה וביטול")
+                    ? "מה שם חברת הביטוח (הפוליסה הקיימת)?"
+                    : "מה שם חברת הביטוח?";
+        askSelectWithOther(lbl,"company",INSURANCE_COMPANIES);
+      },
       ()=>{
         if(data.policyAction==="להפיק חדש"){
           askInput("מה הפרמיה החודשית?","monthlyPremium",false,save);
+        } else if(data.policyAction==="הפקה וביטול"){
+          askInput("מה מספר הפוליסה שתתבטל?","policyNumber",false,()=>nextInFlow());
         } else {
           askInput("מה מספר הפוליסה?","policyNumber",false,save);
+        }
+      },
+      ()=>{
+        if(data.policyAction==="הפקה וביטול"){
+          askSelectWithOther("מה סוג הביטוח החדש שיופק?","newPolicyType",PRIVATE_POLICIES);
+        } else {
+          save();
+        }
+      },
+      ()=>{
+        if(data.policyAction==="הפקה וביטול"){
+          askSelectWithOther("באיזו חברת ביטוח תופק הפוליסה החדשה?","newCompany",INSURANCE_COMPANIES);
+        } else {
+          save();
+        }
+      },
+      ()=>{
+        if(data.policyAction==="הפקה וביטול"){
+          askInput("מה הפרמיה החודשית לפוליסה החדשה?","newMonthlyPremium",false,save);
+        } else {
+          save();
         }
       }
     ];
@@ -472,7 +489,6 @@ function needInsuranceSum(){
 
 function insuranceSumText(){
   if(needInsuranceSum() && data.insuranceSum){
-    // לחיים / וכד' – נשאר "בסכום ביטוח"
     return ` בסכום ביטוח של ${data.insuranceSum} ₪`;
   }
   return "";
@@ -487,6 +503,70 @@ function advanceToNextAction(){
   } else {
     finish();
   }
+}
+
+/* ========= נימוקים להמלצה ========= */
+
+function askReasonsForRecommendation(baseLine){
+  updateTitle();
+  setupBackButton(false);
+
+  step.innerHTML = `
+    <label>להלן הסיבות להמלצה זאת (ניתן להוסיף כמה נימוקים):</label>
+    <div id="reasonsList" style="margin-bottom:8px;font-size:14px;"></div>
+    <input id="reasonInput" placeholder="נימוק אחד בכל פעם">
+    <div style="margin-top:6px;">
+      <button type="button" id="addReasonBtn" class="secondary">נימוק נוסף</button>
+    </div>
+  `;
+
+  const reasons = [];
+  const listDiv = document.getElementById("reasonsList");
+  const inputEl = document.getElementById("reasonInput");
+  const addBtn = document.getElementById("addReasonBtn");
+
+  function renderList(){
+    if(reasons.length===0){
+      listDiv.textContent = "(טרם נרשמו נימוקים)";
+      return;
+    }
+    if(reasons.length===1){
+      listDiv.innerHTML = reasons[0];
+    } else {
+      const html = reasons.map((r,i)=>`${lettersHeb[i]}. ${r}`).join("<br>");
+      listDiv.innerHTML = html;
+    }
+  }
+  renderList();
+
+  addBtn.onclick = ()=>{
+    const v = inputEl.value.trim();
+    if(!v) return alert("רשום נימוק לפני הוספה");
+    reasons.push(v);
+    inputEl.value="";
+    renderList();
+  };
+
+  nextBtn.onclick = ()=>{
+    const v = inputEl.value.trim();
+    if(v){
+      reasons.push(v);
+      inputEl.value="";
+    }
+
+    let finalLine = baseLine;
+    if(reasons.length>0){
+      finalLine += " – להלן הסיבות להמלצה זאת: ";
+      if(reasons.length===1){
+        finalLine += reasons[0];
+      } else {
+        const parts = reasons.map((r,i)=>`${lettersHeb[i]}. ${r}`);
+        finalLine += parts.join(" ");
+      }
+    }
+    results.push(finalLine);
+    advanceToNextAction();
+  };
 }
 
 /* ========= שמירה ========= */
@@ -542,29 +622,22 @@ function save(){
     } else if(data.policyAction==="להשאיר"){
       line += `${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber}- תישאר`;
       line += insuranceSumText();
+    } else if(data.policyAction==="הפקה וביטול"){
+      line += `${data.policyType} בחברת ${data.company} מספר פוליסה ${data.policyNumber}- פוליסה זו תתבטל ובמקום זה תופק פוליסת ${data.newPolicyType} ב${data.newCompany} בפרמיה חודשית של ${data.newMonthlyPremium} ₪`;
     } else {
-      // הפקה חדשה
+      // הפקה חדשה בלבד
       if (["ביטוח בריאות","ביטוח בריאות ומחלות קשות"].includes(data.policyType) && data.insuranceSum){
-        // *** התיקון שביקשת: פיצוי מיד אחרי סוג הכיסוי ***
         line += `תופק פוליסה חדשה של ${data.policyType} עם פיצוי של ${data.insuranceSum} ₪ בחברת ${data.company} בפרמיה חודשית של ${data.monthlyPremium} ₪`;
       } else {
-        // שאר הפוליסות (למשל חיים) – נשאר "בסכום ביטוח"
         line += `תופק פוליסה חדשה של ${data.policyType} בחברת ${data.company} בפרמיה חודשית של ${data.monthlyPremium} ₪`;
         line += insuranceSumText();
       }
     }
   }
 
-  // מצב "המלצות" – סיבה אחרי כל פעולה, בלי סוגריים
   if(summaryMode === "המלצות"){
-    askOptionalInput("רשום את הסיבות להמלצה זו (אם אין, אפשר להשאיר ריק ולהמשיך)", (reason)=>{
-      let finalLine = line;
-      if(reason){
-        finalLine += ` – הומלץ כך: ${reason}`;
-      }
-      results.push(finalLine);
-      advanceToNextAction();
-    });
+    // מעבר למסך נימוקים עם כפתור "נימוק נוסף"
+    askReasonsForRecommendation(line);
   } else {
     results.push(line);
     advanceToNextAction();
@@ -576,7 +649,7 @@ function save(){
 function finish(){
   let header;
   if(summaryMode === "המלצות"){
-    header = `נאמרו ההמלצות הבאות:\n\n`;
+    header = `בהמשך לשיחתנו\nלהלן ההמלצות שנאמרו בשיחה:\n\n`;
   } else {
     header = `בהמשך לשיחתנו\nסוכם על הדברים הבאים:\n\n`;
   }
