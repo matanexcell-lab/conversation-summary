@@ -345,10 +345,18 @@ function buildFlow(){
         } else nextInFlow();
       },
       ()=>askInput("מה מספר הקופה?","fundNumber"),
-      ()=>askSelect("מה סוג הפעולה?","stayAction",["שינוי מסלול השקעה","מינוי סוכן","ללא שינוי"],()=>{
-        if(data.stayAction==="שינוי מסלול השקעה") nextInFlow();
-        else save();
-      }),
+      ()=>askSelectWithOther(
+        "מה סוג הפעולה?",
+        "stayAction",
+        ["שינוי מסלול השקעה","מינוי סוכן","ללא שינוי"],
+        ()=>{
+          if(data.stayAction==="שינוי מסלול השקעה"){
+            nextInFlow();
+          }else{
+            save();
+          }
+        }
+      ),
       ()=>askSelectWithOther("מה המסלול הנוכחי?","currentInvestment",TRACKS),
       ()=>askSelectWithOther("לאיזה מסלול יעבור?","futureInvestment",TRACKS,save)
     ];
@@ -555,8 +563,6 @@ function askReasonsForRecommendation(baseLine){
     }
 
     let finalLine = baseLine;
-
-    // לוודא שיש נקודה בסוף משפט ההמלצה
     const trimmed = finalLine.trim();
     if(!trimmed.endsWith(".") && !trimmed.endsWith("!") && !trimmed.endsWith("?")){
       finalLine += ".";
@@ -594,8 +600,11 @@ function save(){
       line += `${data.company} ${data.fundType}${empTextMiddle()} מספר קופה ${data.fundNumber} – תישאר ללא שינוי`;
     } else if(data.stayAction==="מינוי סוכן"){
       line += `${data.company} ${data.fundType}${empTextMiddle()} מספר קופה ${data.fundNumber} – מינוי סוכן`;
-    } else {
+    } else if(data.stayAction==="שינוי מסלול השקעה"){
       line += `${data.company} ${data.fundType}${empTextMiddle()} מספר קופה ${data.fundNumber} – תישאר באותה חברה כאשר יתבצע שינוי מסלול מ${normalizeTrack(data.currentInvestment)} ל${normalizeTrack(data.futureInvestment)}`;
+    } else {
+      // טקסט חופשי שנכתב ב"אחר"
+      line += `${data.company} ${data.fundType}${empTextMiddle()} מספר קופה ${data.fundNumber} – ${data.stayAction}`;
     }
     line += selfDepositSuffix();
   }
@@ -643,7 +652,6 @@ function save(){
   }
 
   if(summaryMode === "המלצות"){
-    // מעבר למסך נימוקים עם כפתור "נימוק נוסף"
     askReasonsForRecommendation(line);
   } else {
     results.push(line);
